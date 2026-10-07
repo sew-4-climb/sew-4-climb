@@ -1,0 +1,12 @@
+# Configuraizoni database e credenziali sensibili
+config/db.php
+config/google_config.php
+
+# Cartelle temporanee e upload di test pesanti
+img/fabrics/*
+!img/fabrics/sample.jpg
+
+# OS/Editor temp files
+.DS_Store
+.vscode/
+*.log

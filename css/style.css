@@ -1,0 +1,56 @@
+:root {
+    --bg-color: #f4f1ea;
+    --accent: #2c5e3b;
+    --text: #2d312e;
+    --light-text: #ffffff;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+body { background-color: var(--bg-color); color: var(--text); }
+
+/* Header & Nav */
+.main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 30px;
+    background: #fff;
+    border-bottom: 1px solid #e0dcd3;
+}
+.logo a { font-weight: 800; font-size: 1.2rem; color: var(--text); text-decoration: none; letter-spacing: 1px; }
+.main-nav a { margin-left: 20px; text-decoration: none; color: var(--text); font-weight: 500; }
+.main-nav .nav-cta { background: var(--accent); color: white; padding: 8px 16px; border-radius: 20px; }
+
+/* Hero Slider */
+.slider-container {
+    position: relative;
+    width: 100%;
+    height: 70vh;
+    min-height: 400px;
+    overflow: hidden;
+    background: #111;
+}
+.slide {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    opacity: 0; transition: opacity 0.8s ease;
+    display: flex; align-items: center; justify-content: center;
+}
+.slide.active { opacity: 1; }
+.slide-bg {
+    position: absolute; width: 100%; height: 100%;
+    object-fit: cover; filter: brightness(0.6);
+}
+.slide-content {
+    position: relative; z-index: 2; text-align: center;
+    color: var(--light-text); max-width: 700px; padding: 0 20px;
+}
+.slide-content h2 { font-size: 2.5rem; margin-bottom: 15px; }
+.slide-content p { font-size: 1.1rem; margin-bottom: 20px; }
+.btn-cta {
+    display: inline-block; padding: 12px 28px; background: var(--accent);
+    color: white; text-decoration: none; font-weight: bold; border-radius: 25px;
+}
+
+/* Footer */
+.main-footer { text-align: center; padding: 20px; background: #fff; border-top: 1px solid #e0dcd3; font-size: 0.85rem; color: #666; margin-top: 40px; }
