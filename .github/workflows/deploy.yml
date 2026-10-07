@@ -3,7 +3,7 @@ name: Deploy Automatico su Aruba
 on:
   push:
     branches:
-      - master  # Oppure main se la tua branch principale è main
+      - master
 
 jobs:
   web-deploy:
@@ -19,4 +19,4 @@ jobs:
         server: ${{ secrets.FTP_SERVER }}
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
-        server-dir: /www.smartindustries.it/
+        server-dir: /www.smartindustries.it/sew4climb/
