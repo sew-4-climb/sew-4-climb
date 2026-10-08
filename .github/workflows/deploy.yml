@@ -12,15 +12,12 @@ jobs:
     steps:
     - name: Get latest code
       uses: actions/checkout@v3
+
+    - name: Sync files via FTP
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
       with:
-        fetch-depth: 0
-
-    - name: Install Git-FTP
-      run: sudo apt-get update && sudo apt-get install -y git-ftp
-
-    - name: Sync files via Git-FTP
-      env:
-        PASSWORD: ${{ secrets.FTP_PASSWORD }}
-      run: |
-        git ftp push --user "${{ secrets.FTP_USERNAME }}" -p "$PASSWORD" --url "ftp://ftp.smartindustries.it/www.smartindustries.it/sew4climb/" --syncroot . --force || \
-        git ftp init --user "${{ secrets.FTP_USERNAME }}" -p "$PASSWORD" --url "ftp://ftp.smartindustries.it/www.smartindustries.it/sew4climb/" --syncroot .
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        server-dir: www.smartindustries.it/sew4climb/
+        dangerous-clean-slate: false
