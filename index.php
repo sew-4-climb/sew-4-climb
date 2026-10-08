@@ -215,7 +215,7 @@ if (session_status() === PHP_SESSION_NONE) {
         .banner-parallax {
             position: relative;
             padding: 120px 20px;
-            background-image: linear-gradient(rgba(30, 66, 40, 0.75), rgba(44, 94, 59, 0.85)), url('https://images.unsplash.com/photo-1544441893-675973e31985?auto=format&fit=crop&w=1600&q=80');
+            background-image: linear-gradient(rgba(30, 66, 40, 0.75), rgba(44, 94, 59, 0.85)), url('img/ragazzo-lavoro.jpg');
             background-attachment: fixed;
             background-position: center;
             background-repeat: no-repeat;
@@ -417,7 +417,7 @@ if (session_status() === PHP_SESSION_NONE) {
             <p>Dalle cuciture rinforzate all'inserimento delle cerniere e delle etichette in pelle, ogni passaggio garantisce resistenza e stile inconfondibile.</p>
         </div>
         <div class="img-frame">
-            <img src="https://images.unsplash.com/photo-1558769132-cb1aea458c5e?auto=format&fit=crop&w=1000&q=80" alt="Lavorazione Artigianale Fatta a Mano e Sartoria">
+            <img src="img/tavolo-cucito.jpg" alt="Lavorazione Artigianale Fatta a Mano e Sartoria">
         </div>
     </div>
 </div>
