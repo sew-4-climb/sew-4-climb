@@ -15,11 +15,9 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Deploy via Git-FTP
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+    - name: Sync files via Git-FTP
+      uses: TestGithubUser/git-ftp-action@v1.0.0
       with:
-        server: ${{ secrets.FTP_SERVER }}
-        username: ${{ secrets.FTP_USERNAME }}
+        url: "ftp://ftp.smartindustries.it/sew4climb/"
+        user: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
-        server-dir: ./sew4climb/
-        state-name: .ftp-deploy-sync-state.json
