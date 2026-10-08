@@ -3,7 +3,7 @@ name: Deploy Automatico su Aruba
 on:
   push:
     branches:
-      - master  # Oppure main se usi main
+      - master
 
 jobs:
   web-deploy:
@@ -20,6 +20,6 @@ jobs:
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
         port: 21
-        protocol: ftps
+        protocol: ftp
+        passive: true
         server-dir: sew4climb/
-        security-options: '{"rejectUnauthorized": false}'
