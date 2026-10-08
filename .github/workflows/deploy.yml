@@ -22,5 +22,5 @@ jobs:
       env:
         PASSWORD: ${{ secrets.FTP_PASSWORD }}
       run: |
-        git ftp push --user "${{ secrets.FTP_USERNAME }}" -p "$PASSWORD" --url "ftp://ftp.smartindustries.it/sew4climb/" --syncroot . --force || \
-        git ftp init --user "${{ secrets.FTP_USERNAME }}" -p "$PASSWORD" --url "ftp://ftp.smartindustries.it/sew4climb/" --syncroot .
+        git ftp push --user "${{ secrets.FTP_USERNAME }}" -p "$PASSWORD" --url "ftp://ftp.smartindustries.it/www.smartindustries.it/sew4climb/" --syncroot . --force || \
+        git ftp init --user "${{ secrets.FTP_USERNAME }}" -p "$PASSWORD" --url "ftp://ftp.smartindustries.it/www.smartindustries.it/sew4climb/" --syncroot .
