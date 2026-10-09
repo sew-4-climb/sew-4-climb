@@ -350,6 +350,144 @@ if (isset($pdo)) {
             border: 1px dashed rgba(0, 0, 0, 0.15);
             line-height: 1.5;
         }
+
+        /* --- MODALE E TOAST CUSTOM BRANDED --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: #f4f1ea;
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            border-radius: 24px;
+            width: 90%;
+            max-width: 450px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+            text-align: center;
+        }
+
+        .modal-overlay.active .modal-card {
+            transform: translateY(0);
+        }
+
+        .modal-icon-badge {
+            width: 56px;
+            height: 56px;
+            background: rgba(229, 57, 53, 0.12);
+            color: #d32f2f;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px auto;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--text-dark);
+            margin: 0 0 10px 0;
+        }
+
+        .modal-sub {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 18px;
+            line-height: 1.4;
+        }
+
+        .modal-list {
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 14px;
+            padding: 12px 18px;
+            text-align: left;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #333;
+            max-height: 180px;
+            overflow-y: auto;
+            margin-bottom: 22px;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .modal-list ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .modal-list li {
+            margin-bottom: 6px;
+        }
+
+        .modal-list li:last-child {
+            margin-bottom: 0;
+        }
+
+        .btn-modal-close {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 30px;
+            font-weight: 800;
+            font-size: 0.95rem;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.2s ease;
+        }
+
+        .btn-modal-close:hover {
+            background: var(--primary-dark);
+        }
+
+        /* Toast di notifica rapida */
+        .toast-banner {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: var(--text-dark);
+            color: white;
+            padding: 12px 22px;
+            border-radius: 30px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            z-index: 999;
+            opacity: 0;
+            transform: translateY(20px);
+            pointer-events: none;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toast-banner.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
     </style>
 </head>
 <body>
@@ -498,7 +636,7 @@ if (isset($pdo)) {
             <div class="grid-fabric" id="fabricGrid"></div>
         </div>
 
-        <form method="POST" action="configuratore.php" style="margin-top: 20px;" onsubmit="prepareCartData()">
+        <form method="POST" action="configuratore.php" style="margin-top: 20px;" onsubmit="return prepareCartData()">
             <input type="hidden" name="azione_carrello" value="1">
             <input type="hidden" name="configurazione_json" id="configJsonInput">
             <button type="submit" class="btn-order">
@@ -507,6 +645,27 @@ if (isset($pdo)) {
             </button>
         </form>
     </div>
+</div>
+
+<!-- POPUP MODALE BRANDED -->
+<div class="modal-overlay" id="customValidationModal">
+    <div class="modal-card">
+        <div class="modal-icon-badge">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <h3 class="modal-title">Configurazione Incompleta</h3>
+        <p class="modal-sub">Seleziona una stoffa o rifiuta l'accessorio per le seguenti sezioni prima di procedere:</p>
+        <div class="modal-list">
+            <ul id="missingItemsList"></ul>
+        </div>
+        <button type="button" class="btn-modal-close" onclick="closeValidationModal()">Ho Capito, Completa</button>
+    </div>
+</div>
+
+<!-- TOAST DI CONFERMA ESCLUSIONE ACCESSORIO -->
+<div class="toast-banner" id="toastNotification">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4caf50" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    <span id="toastMessage">Accessorio escluso dal sacchetto</span>
 </div>
 
 <script>
@@ -569,9 +728,18 @@ function removeSelectedAccessory() {
     const elem = document.getElementById('element_' + currentSelectedPart);
     if (elem) {
         elem.style.display = 'none';
-        delete userSelections[currentSelectedPart];
-        alert('Accessorio rimosso dal sacchetto!');
+        userSelections[currentSelectedPart] = 'Nessuno';
+        showToast('Accessorio escluso con successo!');
     }
+}
+
+function showToast(msg) {
+    const toast = document.getElementById('toastNotification');
+    document.getElementById('toastMessage').innerText = msg;
+    toast.classList.add('active');
+    setTimeout(() => {
+        toast.classList.remove('active');
+    }, 3000);
 }
 
 function switchView(view) {
@@ -616,8 +784,65 @@ function applyFabricToSelected(item, element) {
     element.classList.add('selected');
 }
 
+function showValidationModal(missingItems) {
+    const listElem = document.getElementById('missingItemsList');
+    listElem.innerHTML = '';
+
+    missingItems.forEach(item => {
+        const li = document.createElement('li');
+        li.innerText = item;
+        listElem.appendChild(li);
+    });
+
+    document.getElementById('customValidationModal').classList.add('active');
+}
+
+function closeValidationModal() {
+    document.getElementById('customValidationModal').classList.remove('active');
+}
+
 function prepareCartData() {
+    const requiredParts = [
+        'top_front', 'top_back', 'bottom_front', 'bottom_back', 'bottom_base', 'side_left', 'side_right'
+    ];
+    const accessories = ['pocket', 'brush', 'tag'];
+
+    const partLabels = {
+        'top_front': 'Parte Superiore (Fronte)',
+        'top_back': 'Parte Superiore (Retro)',
+        'bottom_front': 'Fondo Inferiore (Fronte)',
+        'bottom_back': 'Fondo Inferiore (Retro)',
+        'bottom_base': 'Base del Fondo',
+        'side_left': 'Fianco Sinistro Etnico',
+        'side_right': 'Fianco Destro Etnico',
+        'pocket': 'Accessorio: Taschina Frontale',
+        'brush': 'Accessorio: Porta Spazzolina',
+        'tag': 'Accessorio: Etichetta in Pelle'
+    };
+
+    let missing = [];
+
+    // Verifico parti obbligatorie
+    requiredParts.forEach(part => {
+        if (!userSelections[part] || userSelections[part] === 'Nessuno') {
+            missing.push(partLabels[part] || part);
+        }
+    });
+
+    // Verifico accessori
+    accessories.forEach(acc => {
+        if (!userSelections.hasOwnProperty(acc)) {
+            missing.push(partLabels[acc] || acc);
+        }
+    });
+
+    if (missing.length > 0) {
+        showValidationModal(missing);
+        return false;
+    }
+
     document.getElementById('configJsonInput').value = JSON.stringify(userSelections);
+    return true;
 }
 
 window.onload = function() {
