@@ -1,4 +1,8 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 require_once __DIR__ . '/config/google_config.php';
 
 if (!isset($_GET['code'])) {
@@ -28,22 +32,32 @@ curl_close($ch);
 $data = json_decode($response, true);
 
 if (isset($data['access_token'])) {
-    $user_info_url = 'https://www.googleapis.com/oauth2/v2/userinfo?access_token=' . $data['access_token'];
-    $user_info = json_decode(file_get_contents($user_info_url), true);
+    // Recupero info utente via cURL
+    $user_info_url = 'https://www.googleapis.com/oauth2/v2/userinfo';
+    $ch2 = curl_init();
+    curl_setopt($ch2, CURLOPT_URL, $user_info_url);
+    curl_setopt($ch2, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $data['access_token']]);
+    curl_setopt($ch2, CURLOPT_RETURNTRANSFER, true);
+    $user_response = curl_exec($ch2);
+    curl_close($ch2);
 
-    $email = strtolower(trim($user_info['email']));
-    $nome  = $user_info['name'];
+    $user_info = json_decode($user_response, true);
+
+    $email = strtolower(trim($user_info['email'] ?? ''));
+    $nome  = $user_info['name'] ?? '';
 
     $_SESSION['user_email'] = $email;
     $_SESSION['user_name']  = $nome;
 
-    if ($email === 'pietro.rogai09@gmail.com') {
+    // Lista email Amministratori
+    $admin_emails = ['pietro.rogai09@gmail.com'];
+
+    if (in_array($email, $admin_emails, true)) {
         $_SESSION['is_admin'] = true;
         header('Location: admin.php');
     } else {
         $_SESSION['is_admin'] = false;
         
-        // Se c'è un ordine salvato dal configuratore, va al checkout, altrimenti al configuratore
         if (isset($_SESSION['carrello_configurazione'])) {
             header('Location: checkout.php');
         } else {

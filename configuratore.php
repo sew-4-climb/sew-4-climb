@@ -44,6 +44,34 @@ if (isset($pdo)) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configuratore Custom — Sew 4 Climb</title>
     <style>
+        .fabric-card {
+    position: relative;
+}
+
+.fabric-stock-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    color: white;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 3px 7px;
+    border-radius: 10px;
+    z-index: 2;
+}
+
+.fabric-stock-badge.low {
+    background: #e65100;
+}
+
+.fabric-card.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+    filter: grayscale(0.8);
+}
         :root {
             --primary: #2c5e3b;
             --primary-dark: #1e4228;
@@ -673,7 +701,7 @@ const allStoffe = <?= json_encode($stoffe); ?>;
 
 let currentSelectedPart = 'top_front';
 let currentCategory = 'sacchetto';
-let userSelections = {};
+let userSelections = {}; // Mappa: { 'top_front': { id: 5, nome: 'Denim' }, ... }
 
 function selectPart(partId, partLabel, targetCategory) {
     currentSelectedPart = partId;
@@ -691,6 +719,17 @@ function selectPart(partId, partLabel, targetCategory) {
     if (elem) elem.style.display = 'block';
 
     renderFabricGrid();
+}
+
+// Calcola le quantità utilizzate attualmente nella configurazione
+function getUsedQuantity(fabricId) {
+    let used = 0;
+    for (let part in userSelections) {
+        if (userSelections[part] && userSelections[part].id === fabricId) {
+            used++;
+        }
+    }
+    return used;
 }
 
 function renderFabricGrid() {
@@ -711,15 +750,33 @@ function renderFabricGrid() {
     }
 
     filtered.forEach(item => {
+        const usedCount = getUsedQuantity(item.id);
+        const currentPartSelectedFabric = userSelections[currentSelectedPart];
+        
+        // Se questa stoffa è già usata per la sezione corrente, non contiamo quell'uso ai fini del calcolo residuo
+        const isSelectedForCurrentPart = currentPartSelectedFabric && currentPartSelectedFabric.id === item.id;
+        const effectiveUsed = isSelectedForCurrentPart ? usedCount - 1 : usedCount;
+        
+        const availableStock = parseInt(item.quantita) - effectiveUsed;
+
         const card = document.createElement('div');
-        card.className = 'fabric-card';
-        card.onclick = function() { applyFabricToSelected(item, this); };
+        card.className = 'fabric-card' + (availableStock <= 0 ? ' disabled' : '') + (isSelectedForCurrentPart ? ' selected' : '');
+        card.onclick = function() { 
+            if (availableStock > 0) {
+                applyFabricToSelected(item, this); 
+            } else {
+                showToast('Quantità esaurite per questo materiale!');
+            }
+        };
 
         let imgHtml = item.foto 
             ? `<img src="img/fabrics/${item.foto}" class="fabric-img" alt="${item.nome}">`
             : `<div class="fabric-img" style="background:#ccc; display:flex; align-items:center; justify-content:center; font-size:0.7rem;">No foto</div>`;
 
-        card.innerHTML = `${imgHtml}<div class="fabric-name">${item.nome}</div>`;
+        const badgeClass = availableStock <= 1 ? 'fabric-stock-badge low' : 'fabric-stock-badge';
+        const badgeHtml = `<div class="${badgeClass}">${availableStock} pz</div>`;
+
+        card.innerHTML = `${badgeHtml}${imgHtml}<div class="fabric-name">${item.nome}</div>`;
         grid.appendChild(card);
     });
 }
@@ -728,8 +785,9 @@ function removeSelectedAccessory() {
     const elem = document.getElementById('element_' + currentSelectedPart);
     if (elem) {
         elem.style.display = 'none';
-        userSelections[currentSelectedPart] = 'Nessuno';
-        showToast('Accessorio escluso con successo!');
+        userSelections[currentSelectedPart] = { id: null, nome: 'Nessuno' };
+        showToast('Accessorio escluso dal sacchetto!');
+        renderFabricGrid();
     }
 }
 
@@ -767,7 +825,8 @@ function switchView(view) {
 function applyFabricToSelected(item, element) {
     if (!item.foto) return;
 
-    userSelections[currentSelectedPart] = item.nome;
+    // Salviamo ID e Nome della stoffa scelta per questa sezione
+    userSelections[currentSelectedPart] = { id: item.id, nome: item.nome };
 
     const elem = document.getElementById('element_' + currentSelectedPart);
     if (elem) elem.style.display = 'block';
@@ -779,26 +838,8 @@ function applyFabricToSelected(item, element) {
         patternElem.innerHTML = `<image href="img/fabrics/${item.foto}" width="100" height="100" preserveAspectRatio="xMidYMid slice"/>`;
     }
 
-    const siblings = element.parentElement.children;
-    for (let child of siblings) child.classList.remove('selected');
-    element.classList.add('selected');
-}
-
-function showValidationModal(missingItems) {
-    const listElem = document.getElementById('missingItemsList');
-    listElem.innerHTML = '';
-
-    missingItems.forEach(item => {
-        const li = document.createElement('li');
-        li.innerText = item;
-        listElem.appendChild(li);
-    });
-
-    document.getElementById('customValidationModal').classList.add('active');
-}
-
-function closeValidationModal() {
-    document.getElementById('customValidationModal').classList.remove('active');
+    // Ri-renderizziamo la griglia per aggiornare i contatori dei badge
+    renderFabricGrid();
 }
 
 function prepareCartData() {
@@ -822,14 +863,12 @@ function prepareCartData() {
 
     let missing = [];
 
-    // Verifico parti obbligatorie
     requiredParts.forEach(part => {
-        if (!userSelections[part] || userSelections[part] === 'Nessuno') {
+        if (!userSelections[part] || !userSelections[part].nome || userSelections[part].nome === 'Nessuno') {
             missing.push(partLabels[part] || part);
         }
     });
 
-    // Verifico accessori
     accessories.forEach(acc => {
         if (!userSelections.hasOwnProperty(acc)) {
             missing.push(partLabels[acc] || acc);
@@ -841,7 +880,13 @@ function prepareCartData() {
         return false;
     }
 
-    document.getElementById('configJsonInput').value = JSON.stringify(userSelections);
+    // Formattiamo i dati per inviare solo i nomi al carrello PHP
+    let finalPayload = {};
+    for (let p in userSelections) {
+        finalPayload[p] = userSelections[p].nome;
+    }
+
+    document.getElementById('configJsonInput').value = JSON.stringify(finalPayload);
     return true;
 }
 
