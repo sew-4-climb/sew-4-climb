@@ -50,7 +50,7 @@ if (isset($data['access_token'])) {
     $_SESSION['user_name']  = $nome;
 
     // Lista email Amministratori
-    $admin_emails = ['pietro.rogai09@gmail.com'];
+    $admin_emails = ['sew4climb@gmail.com'];
 
     if (in_array($email, $admin_emails, true)) {
         $_SESSION['is_admin'] = true;
