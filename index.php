@@ -97,6 +97,7 @@ if (session_status() === PHP_SESSION_NONE) {
             display: flex;
             align-items: center;
             gap: 8px;
+            white-space: nowrap;
         }
 
         .btn-nav:hover {
@@ -134,6 +135,7 @@ if (session_status() === PHP_SESSION_NONE) {
         .hero-content {
             max-width: 850px;
             animation: fadeIn 1.2s ease-in-out;
+            width: 100%;
         }
 
         .hero-content h1 {
@@ -310,6 +312,7 @@ if (session_status() === PHP_SESSION_NONE) {
         .btn-cta-giant {
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 12px;
             background-color: var(--primary);
             color: white;
@@ -342,28 +345,59 @@ if (session_status() === PHP_SESSION_NONE) {
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* --- CORREZIONE SOVRAPPOSIZIONE MOBILE HEADER --- */
-        @media (max-width: 900px) {
+        /* --- FIX MOBILE DEFINITIVO PER NITIDEZZA SFONDO E CENTRAGGIO --- */
+        @media (max-width: 768px) {
             .header {
-                padding: 12px 15px;
+                padding: 10px 12px;
             }
             .logo {
-                font-size: 1.05rem;
-                letter-spacing: 0.5px;
+                font-size: 1rem;
+                letter-spacing: 0px;
             }
             .nav-links {
-                gap: 10px;
+                gap: 8px;
             }
             .nav-links a {
-                font-size: 0.82rem;
+                font-size: 0.78rem;
             }
             .btn-nav {
-                padding: 8px 14px;
-                font-size: 0.8rem;
+                padding: 6px 12px;
+                font-size: 0.75rem;
             }
-            .split-block, .split-block.reverse { grid-template-columns: 1fr; direction: ltr; }
+            .btn-nav span {
+                display: none; /* Su smartphone lascia solo l'icona sul tasto verde dell'header */
+            }
+
+            /* Risolve la sfuocatura di Safari iOS disattivando la finta fixed e ripristinando cover nitido */
+            .hero-parallax, .banner-parallax {
+                background-attachment: scroll !important;
+                background-size: cover !important;
+                background-position: center center !important;
+            }
+
+            .hero-parallax {
+                height: 75vh;
+                padding: 0 15px;
+            }
+            .hero-content h1 {
+                font-size: 1.85rem;
+                margin-bottom: 15px;
+            }
+            .hero-content p {
+                font-size: 0.95rem;
+                margin-bottom: 25px;
+            }
+            .btn-cta-giant {
+                padding: 16px 24px;
+                font-size: 0.95rem;
+                width: 100%;
+            }
+
+            .split-block, .split-block.reverse { grid-template-columns: 1fr; direction: ltr; gap: 30px; }
             .grid-cards { grid-template-columns: 1fr; }
-            .hero-content h1 { font-size: 2.4rem; }
+            .scroll-section { padding: 50px 15px; }
+            .cta-section { padding: 60px 15px; }
+            .cta-container h2 { font-size: 2rem; }
         }
     </style>
 </head>
