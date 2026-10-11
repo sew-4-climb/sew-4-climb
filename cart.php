@@ -17,17 +17,22 @@ $cart = $_SESSION['cart'] ?? [];
     <meta charset="UTF-8">
     <title>Il Tuo Carrello — Sew 4 Climb</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f4f1ea; margin: 0; padding: 40px 20px; color: #333; }
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 35px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
-        h1 { margin-top: 0; font-size: 1.8rem; display: flex; align-items: center; gap: 12px; }
-        .cart-item { display: flex; justify-content: space-between; background: #fafafa; border: 1px solid #eee; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
-        .item-title { font-weight: bold; font-size: 1.1rem; }
-        .item-price { font-weight: bold; color: #2c5e3b; font-size: 1.2rem; }
-        .details-list { font-size: 0.85rem; color: #666; margin-top: 10px; padding-left: 20px; }
-        .btn-checkout { background: #2c5e3b; color: white; border: none; padding: 16px; font-size: 1.1rem; font-weight: bold; border-radius: 30px; cursor: pointer; width: 100%; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 10px; box-sizing: border-box; }
-        .btn-checkout:hover { background: #21472c; }
-        .empty-cart { text-align: center; padding: 40px; color: #888; }
-        .back-link { display: flex; align-items: center; justify-content: center; gap: 8px; text-align: center; margin-top: 20px; color: #666; text-decoration: none; font-size: 0.9rem; }
+        :root {
+            --primary: #2c5e3b;
+            --primary-dark: #21472c;
+            --bg-cream: #f4f1ea;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg-cream); margin: 0; padding: 40px 20px; color: #333; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 35px; border-radius: 20px; box-shadow: 0 4px 25px rgba(0,0,0,0.06); }
+        h1 { margin-top: 0; font-size: 1.8rem; display: flex; align-items: center; gap: 12px; color: #1a1a1a; }
+        .cart-item { display: flex; justify-content: space-between; background: #fafafa; border: 1px solid #eee; padding: 22px; border-radius: 16px; margin-bottom: 20px; }
+        .item-title { font-weight: 800; font-size: 1.15rem; color: #1a1a1a; }
+        .item-price { font-weight: 800; color: var(--primary); font-size: 1.3rem; }
+        .details-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 20px; margin-top: 12px; font-size: 0.88rem; color: #555; background: white; padding: 12px 16px; border-radius: 10px; border: 1px solid #eaeaea; }
+        .btn-checkout { background: var(--primary); color: white; border: none; padding: 18px; font-size: 1.1rem; font-weight: 800; border-radius: 35px; cursor: pointer; width: 100%; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 10px; box-sizing: border-box; transition: background 0.2s; }
+        .btn-checkout:hover { background: var(--primary-dark); }
+        .empty-cart { text-align: center; padding: 50px 20px; color: #888; }
+        .back-link { display: flex; align-items: center; justify-content: center; gap: 8px; text-align: center; margin-top: 22px; color: #666; text-decoration: none; font-size: 0.9rem; font-weight: 600; }
     </style>
 </head>
 <body>
@@ -40,31 +45,40 @@ $cart = $_SESSION['cart'] ?? [];
 
     <?php if (empty($cart)): ?>
         <div class="empty-cart">
-            <p>Il carrello è vuoto.</p>
-            <a href="configuratore.php" style="color:#2c5e3b; font-weight:bold; text-decoration:none;">Crea subito il tuo primo sacchetto &rarr;</a>
+            <p style="font-size:1.1rem;">Il carrello è attualmente vuoto.</p>
+            <a href="configuratore.php" style="color:var(--primary); font-weight:bold; text-decoration:none;">Crea subito il tuo primo sacchetto custom &rarr;</a>
         </div>
     <?php else: ?>
         <?php foreach ($cart as $item): ?>
             <div class="cart-item">
-                <div>
+                <div style="flex-grow: 1; margin-right: 20px;">
                     <div class="item-title"><?= htmlspecialchars($item['nome']) ?></div>
-                    <ul class="details-list">
-                        <?php if (!empty($item['dettagli'])): ?>
-                            <?php foreach ($item['dettagli'] as $part => $fabric): ?>
-                                <li><strong><?= ucfirst($part) ?>:</strong> <?= htmlspecialchars($fabric) ?></li>
+                    
+                    <?php if (!empty($item['dettagli'])): ?>
+                        <div class="details-grid">
+                            <?php 
+                            $labels = [
+                                'top_front' => 'Sup. Fronte', 'top_back' => 'Sup. Retro',
+                                'bottom_front' => 'Fondo Fronte', 'bottom_back' => 'Fondo Retro',
+                                'bottom_base' => 'Base Fondo', 'side_left' => 'Fianco SX',
+                                'side_right' => 'Fianco DX', 'pocket' => 'Taschina',
+                                'brush' => 'Spazzolina', 'tag' => 'Etichetta'
+                            ];
+                            foreach ($item['dettagli'] as $part => $fabric): 
+                                $label = $labels[$part] ?? ucfirst($part);
+                            ?>
+                                <div><strong><?= $label ?>:</strong> <?= htmlspecialchars($fabric) ?></div>
                             <?php endforeach; ?>
-                        <?php else: ?>
-                            <li>Configurazione custom selezionata</li>
-                        <?php endif; ?>
-                    </ul>
+                        </div>
+                    <?php endif; ?>
                 </div>
                 <div class="item-price">€<?= number_format($item['prezzo'], 2, ',', '.') ?></div>
             </div>
         <?php endforeach; ?>
 
-        <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
-            <a href="cart.php?action=clear" style="color:#c62828; font-size:0.85rem; text-decoration:none;">Svuota Carrello</a>
-            <a href="configuratore.php" style="color:#2c5e3b; font-size:0.85rem; font-weight:bold; text-decoration:none;">+ Aggiungi un altro sacchetto</a>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px;">
+            <a href="cart.php?action=clear" style="color:#c62828; font-size:0.88rem; font-weight:bold; text-decoration:none;">Svuota Carrello</a>
+            <a href="configuratore.php" style="color:var(--primary); font-size:0.9rem; font-weight:bold; text-decoration:none;">+ Aggiungi un altro sacchetto</a>
         </div>
 
         <a href="checkout.php" class="btn-checkout">
@@ -73,7 +87,7 @@ $cart = $_SESSION['cart'] ?? [];
         </a>
     <?php endif; ?>
 
-    <a href="index.php" class="back-link">&larr; Torna alla Home Page</a>
+    <a href="configuratore.php" class="back-link">&larr; Torna al Configuratore</a>
 </div>
 
 </body>

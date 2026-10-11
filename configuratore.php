@@ -11,10 +11,11 @@ require_once __DIR__ . '/config/db.php';
 
 // Salvataggio configurazione nel carrello e redirect alla Home
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['azione_carrello'])) {
-    $config_json =$_POST['configurazione_json'] ?? '{}';
+    $config_json = $_POST['configurazione_json'] ?? '{}';
     $config_data = json_decode($config_json, true);
 
-    if (!isset($_SESSION['cart'])) {$_SESSION['cart'] = [];
+    if (!isset($_SESSION['cart'])) {
+        $_SESSION['cart'] = [];
     }
 
     $_SESSION['cart'][] = [
@@ -31,9 +32,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['azione_carrello'])) {
 $stoffe = [];
 if (isset($pdo)) {
     try {
-        $stmt =$pdo->query("SELECT * FROM stoffe WHERE quantita > 0 ORDER BY id DESC");
-        $stoffe =$stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Exception $e) {$stoffe = [];
+        // Raggruppa i materiali con lo stesso nome e sezione, sommando i pezzi disponibili
+        $sql = "SELECT 
+                    MAX(id) as id,
+                    nome,
+                    sezione,
+                    SUM(quantita) as quantita,
+                    MAX(foto) as foto
+                FROM stoffe 
+                WHERE quantita > 0 
+                GROUP BY LOWER(TRIM(nome)), sezione 
+                ORDER BY id DESC";
+        $stmt = $pdo->query($sql);
+        $stoffe = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        $stoffe = [];
     }
 }
 ?>
@@ -44,34 +57,6 @@ if (isset($pdo)) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configuratore Custom — Sew 4 Climb</title>
     <style>
-        .fabric-card {
-    position: relative;
-}
-
-.fabric-stock-badge {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: rgba(0, 0, 0, 0.65);
-    backdrop-filter: blur(4px);
-    color: white;
-    font-size: 0.68rem;
-    font-weight: 700;
-    padding: 3px 7px;
-    border-radius: 10px;
-    z-index: 2;
-}
-
-.fabric-stock-badge.low {
-    background: #e65100;
-}
-
-.fabric-card.disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-    pointer-events: none;
-    filter: grayscale(0.8);
-}
         :root {
             --primary: #2c5e3b;
             --primary-dark: #1e4228;
@@ -164,16 +149,81 @@ if (isset($pdo)) {
             box-shadow: 0 15px 35px rgba(0, 0, 0, 0.05);
         }
 
+        /* FRECCETTE INTUITIVE SULL'ANTEPRIMA */
+        .nav-arrow {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+            transition: all 0.25s ease;
+            z-index: 5;
+            color: var(--text-dark);
+        }
+
+        .nav-arrow:hover {
+            background: white;
+            color: var(--primary);
+            box-shadow: 0 6px 20px rgba(44, 94, 59, 0.3);
+        }
+
+        /* Frecce Laterali (Sinistra / Destra) */
+        .nav-arrow.left, .nav-arrow.right {
+            top: 50%;
+            transform: translateY(-50%);
+            width: 46px;
+            height: 46px;
+        }
+
+        .nav-arrow.left { left: 20px; }
+        .nav-arrow.right { right: 20px; }
+
+        .nav-arrow.left:hover { transform: translateY(-50%) scale(1.1); }
+        .nav-arrow.right:hover { transform: translateY(-50%) scale(1.1); }
+
+        /* Freccia in Basso (Vista Fondo) */
+        .nav-arrow.bottom {
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 44px;
+            height: 44px;
+        }
+
+        .nav-arrow.bottom:hover {
+            transform: translateX(-50%) scale(1.1);
+        }
+
+        /* STAGE E ANIMAZIONE ROTAZIONE 3D FLUIDA */
         .bag-stage {
             position: relative;
             width: 380px;
             height: 480px;
+            perspective: 800px;
         }
 
         .bag-stage svg {
             width: 100%;
             height: 100%;
             filter: drop-shadow(0px 15px 25px rgba(0,0,0,0.18));
+            transform-origin: center center;
+            transition: transform 0.25s ease-in-out, opacity 0.25s ease-in-out;
+        }
+
+        .bag-stage svg.rotate-y-out {
+            transform: rotateY(90deg) scale(0.92);
+            opacity: 0.2;
+        }
+
+        .bag-stage svg.rotate-x-out {
+            transform: rotateX(90deg) scale(0.92);
+            opacity: 0.2;
         }
 
         .interactive-part {
@@ -225,22 +275,6 @@ if (isset($pdo)) {
 
         .btn-view.active svg { stroke: white; }
 
-        .hint-banner {
-            position: absolute;
-            bottom: 25px;
-            background: rgba(26, 26, 26, 0.78);
-            backdrop-filter: blur(10px);
-            color: white;
-            padding: 10px 24px;
-            border-radius: 30px;
-            font-size: 0.85rem;
-            font-weight: 500;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
         .panel {
             background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(16px);
@@ -284,6 +318,7 @@ if (isset($pdo)) {
         }
 
         .fabric-card {
+            position: relative;
             border: 2px solid rgba(0, 0, 0, 0.06);
             border-radius: 14px;
             overflow: hidden;
@@ -303,6 +338,31 @@ if (isset($pdo)) {
         .fabric-card.selected {
             border-color: var(--primary);
             background: rgba(44, 94, 59, 0.08);
+        }
+
+        .fabric-card.disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            pointer-events: none;
+            filter: grayscale(0.8);
+        }
+
+        .fabric-stock-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(4px);
+            color: white;
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding: 3px 7px;
+            border-radius: 10px;
+            z-index: 2;
+        }
+
+        .fabric-stock-badge.low {
+            background: #e65100;
         }
 
         .fabric-img {
@@ -544,7 +604,7 @@ if (isset($pdo)) {
 
 <div class="main-container">
     <div class="preview-container">
-        <!-- VISTE TRIDIMENSIONALI (FRONTE, RETRO, DAL BASSO) -->
+        <!-- CONTROLLI IN ALTO -->
         <div class="view-controls">
             <button class="btn-view active" id="btnFront" onclick="switchView('front')">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
@@ -560,6 +620,20 @@ if (isset($pdo)) {
             </button>
         </div>
 
+        <!-- FRECCE LATERALI (Alternano Fronte e Retro con animazione Y) -->
+        <button type="button" class="nav-arrow left" onclick="toggleFrontBack()" title="Ruota Sacchetto" aria-label="Ruota Sacchetto">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        
+        <button type="button" class="nav-arrow right" onclick="toggleFrontBack()" title="Ruota Sacchetto" aria-label="Ruota Sacchetto">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+
+        <!-- FRECCIA IN BASSO (Guarda dal Basso con animazione X) -->
+        <button type="button" class="nav-arrow bottom" onclick="switchView('bottom')" title="Guarda dal Basso" aria-label="Guarda dal Basso">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+
         <div class="bag-stage">
             <svg viewBox="0 0 400 500" id="svgBag">
                 <defs>
@@ -567,7 +641,6 @@ if (isset($pdo)) {
                     <pattern id="pat_top_back" patternUnits="userSpaceOnUse" width="100" height="100"><rect width="100" height="100" fill="#78909c"/></pattern>
                     <pattern id="pat_bottom_front" patternUnits="userSpaceOnUse" width="100" height="100"><rect width="100" height="100" fill="#263238"/></pattern>
                     <pattern id="pat_bottom_back" patternUnits="userSpaceOnUse" width="100" height="100"><rect width="100" height="100" fill="#263238"/></pattern>
-                    <!-- BASE DEL FONDO SEPARATA E INDIPENDENTE -->
                     <pattern id="pat_bottom_base" patternUnits="userSpaceOnUse" width="100" height="100"><rect width="100" height="100" fill="#1e272c"/></pattern>
                     <pattern id="pat_side_left" patternUnits="userSpaceOnUse" width="100" height="100"><rect width="100" height="100" fill="#5d4037"/></pattern>
                     <pattern id="pat_side_right" patternUnits="userSpaceOnUse" width="100" height="100"><rect width="100" height="100" fill="#5d4037"/></pattern>
@@ -625,23 +698,14 @@ if (isset($pdo)) {
                     <rect x="53" y="55" width="22" height="28" rx="4" fill="#111"/>
                 </g>
 
-                <!-- VISTA DAL BASSO (BASE INFERIORE DEL FONDO INDIPENDENTE) -->
+                <!-- VISTA DAL BASSO -->
                 <g id="groupBottom" style="display: none;">
                     <rect x="40" y="120" width="320" height="260" rx="60" fill="#1a1a1a" stroke="#333" stroke-width="3"/>
-                    
-                    <!-- PANNELLO BASE DEL FONDO INDIPENDENTE -->
                     <rect class="interactive-part" x="55" y="135" width="290" height="230" rx="45" fill="url(#pat_bottom_base)" stroke="#2c5e3b" stroke-width="3" onclick="selectPart('bottom_base', 'Base del Fondo (Vista dal Basso)', 'sacchetto')"/>
-                    
                     <rect x="65" y="145" width="270" height="210" rx="38" fill="none" stroke="#e0e0e0" stroke-width="2" stroke-dasharray="6,4"/>
-                    
                     <text x="200" y="255" font-size="14" font-weight="bold" fill="#ffffff" text-anchor="middle" style="letter-spacing:1px; opacity:0.85;">BASE DEL FONDO INDIPENDENTE</text>
                 </g>
             </svg>
-        </div>
-
-        <div class="hint-banner">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5"/></svg>
-            Clicca su un elemento per personalizzarlo o rimuoverlo
         </div>
     </div>
 
@@ -675,7 +739,7 @@ if (isset($pdo)) {
     </div>
 </div>
 
-<!-- POPUP MODALE BRANDED -->
+<!-- POPUP MODALE BRANDED PER CONFIGURAZIONE INCOMPLETA -->
 <div class="modal-overlay" id="customValidationModal">
     <div class="modal-card">
         <div class="modal-icon-badge">
@@ -690,7 +754,7 @@ if (isset($pdo)) {
     </div>
 </div>
 
-<!-- TOAST DI CONFERMA ESCLUSIONE ACCESSORIO -->
+<!-- TOAST DI NOTIFICA RAPIDA -->
 <div class="toast-banner" id="toastNotification">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4caf50" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
     <span id="toastMessage">Accessorio escluso dal sacchetto</span>
@@ -701,7 +765,63 @@ const allStoffe = <?= json_encode($stoffe); ?>;
 
 let currentSelectedPart = 'top_front';
 let currentCategory = 'sacchetto';
-let userSelections = {}; // Mappa: { 'top_front': { id: 5, nome: 'Denim' }, ... }
+let currentView = 'front';
+let userSelections = {}; 
+let isAnimating = false;
+
+function toggleFrontBack() {
+    if (isAnimating) return;
+    const targetView = (currentView === 'front') ? 'back' : 'front';
+    animate3DTransition(targetView, 'y');
+}
+
+function animate3DTransition(targetView, axis = 'y') {
+    if (isAnimating || currentView === targetView) return;
+    isAnimating = true;
+
+    const svg = document.getElementById('svgBag');
+    const animClass = (axis === 'x') ? 'rotate-x-out' : 'rotate-y-out';
+
+    // 1. Inizia la prima metà della rotazione
+    svg.classList.add(animClass);
+
+    // 2. A metà animazione (250ms), cambiamo il layer dell'SVG e rimuoviamo la classe
+    setTimeout(() => {
+        applyViewVisibility(targetView);
+        svg.classList.remove(animClass);
+        isAnimating = false;
+    }, 250);
+}
+
+function applyViewVisibility(view) {
+    currentView = view;
+
+    document.getElementById('btnFront').classList.remove('active');
+    document.getElementById('btnBack').classList.remove('active');
+    document.getElementById('btnBottom').classList.remove('active');
+
+    document.getElementById('groupFront').style.display = 'none';
+    document.getElementById('groupBack').style.display = 'none';
+    document.getElementById('groupBottom').style.display = 'none';
+
+    if (view === 'front') {
+        document.getElementById('groupFront').style.display = 'block';
+        document.getElementById('btnFront').classList.add('active');
+    } else if (view === 'back') {
+        document.getElementById('groupBack').style.display = 'block';
+        document.getElementById('btnBack').classList.add('active');
+    } else if (view === 'bottom') {
+        document.getElementById('groupBottom').style.display = 'block';
+        document.getElementById('btnBottom').classList.add('active');
+        selectPart('bottom_base', 'Base del Fondo (Vista dal Basso)', 'sacchetto');
+    }
+}
+
+function switchView(view) {
+    if (view === currentView) return;
+    const axis = (view === 'bottom' || currentView === 'bottom') ? 'x' : 'y';
+    animate3DTransition(view, axis);
+}
 
 function selectPart(partId, partLabel, targetCategory) {
     currentSelectedPart = partId;
@@ -721,11 +841,11 @@ function selectPart(partId, partLabel, targetCategory) {
     renderFabricGrid();
 }
 
-// Calcola le quantità utilizzate attualmente nella configurazione
-function getUsedQuantity(fabricId) {
+// Calcola quante volte questa stoffa (per NOME) è stata assegnata ad altre parti
+function getUsedQuantity(fabricName) {
     let used = 0;
     for (let part in userSelections) {
-        if (userSelections[part] && userSelections[part].id === fabricId) {
+        if (userSelections[part] && userSelections[part].nome === fabricName) {
             used++;
         }
     }
@@ -750,11 +870,10 @@ function renderFabricGrid() {
     }
 
     filtered.forEach(item => {
-        const usedCount = getUsedQuantity(item.id);
+        const usedCount = getUsedQuantity(item.nome);
         const currentPartSelectedFabric = userSelections[currentSelectedPart];
         
-        // Se questa stoffa è già usata per la sezione corrente, non contiamo quell'uso ai fini del calcolo residuo
-        const isSelectedForCurrentPart = currentPartSelectedFabric && currentPartSelectedFabric.id === item.id;
+        const isSelectedForCurrentPart = currentPartSelectedFabric && currentPartSelectedFabric.nome === item.nome;
         const effectiveUsed = isSelectedForCurrentPart ? usedCount - 1 : usedCount;
         
         const availableStock = parseInt(item.quantita) - effectiveUsed;
@@ -800,32 +919,9 @@ function showToast(msg) {
     }, 3000);
 }
 
-function switchView(view) {
-    document.getElementById('btnFront').classList.remove('active');
-    document.getElementById('btnBack').classList.remove('active');
-    document.getElementById('btnBottom').classList.remove('active');
-
-    document.getElementById('groupFront').style.display = 'none';
-    document.getElementById('groupBack').style.display = 'none';
-    document.getElementById('groupBottom').style.display = 'none';
-
-    if (view === 'front') {
-        document.getElementById('groupFront').style.display = 'block';
-        document.getElementById('btnFront').classList.add('active');
-    } else if (view === 'back') {
-        document.getElementById('groupBack').style.display = 'block';
-        document.getElementById('btnBack').classList.add('active');
-    } else if (view === 'bottom') {
-        document.getElementById('groupBottom').style.display = 'block';
-        document.getElementById('btnBottom').classList.add('active');
-        selectPart('bottom_base', 'Base del Fondo (Vista dal Basso)', 'sacchetto');
-    }
-}
-
 function applyFabricToSelected(item, element) {
     if (!item.foto) return;
 
-    // Salviamo ID e Nome della stoffa scelta per questa sezione
     userSelections[currentSelectedPart] = { id: item.id, nome: item.nome };
 
     const elem = document.getElementById('element_' + currentSelectedPart);
@@ -838,8 +934,24 @@ function applyFabricToSelected(item, element) {
         patternElem.innerHTML = `<image href="img/fabrics/${item.foto}" width="100" height="100" preserveAspectRatio="xMidYMid slice"/>`;
     }
 
-    // Ri-renderizziamo la griglia per aggiornare i contatori dei badge
     renderFabricGrid();
+}
+
+function showValidationModal(missingItems) {
+    const listElem = document.getElementById('missingItemsList');
+    listElem.innerHTML = '';
+
+    missingItems.forEach(item => {
+        const li = document.createElement('li');
+        li.innerText = item;
+        listElem.appendChild(li);
+    });
+
+    document.getElementById('customValidationModal').classList.add('active');
+}
+
+function closeValidationModal() {
+    document.getElementById('customValidationModal').classList.remove('active');
 }
 
 function prepareCartData() {
@@ -880,7 +992,6 @@ function prepareCartData() {
         return false;
     }
 
-    // Formattiamo i dati per inviare solo i nomi al carrello PHP
     let finalPayload = {};
     for (let p in userSelections) {
         finalPayload[p] = userSelections[p].nome;

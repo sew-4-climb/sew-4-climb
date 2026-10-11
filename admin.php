@@ -22,6 +22,7 @@ if (!isset($_SESSION['is_admin']) || $_SESSION['is_admin'] !== true) {
 $messaggio = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // 1. Aggiungi nuovo materiale
     if (isset($_POST['azione']) && $_POST['azione'] === 'aggiungi') {
         $nome = trim($_POST['nome'] ?? '');
         $descrizione = trim($_POST['descrizione'] ?? '');
@@ -45,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        if (!$messaggio) {
+        if (!$messaggio && isset($pdo) && $pdo !== null) {
             try {
                 $stmt = $pdo->prepare("INSERT INTO stoffe (sezione, nome, descrizione, quantita, pattern_id, foto) VALUES (?, ?, ?, ?, ?, ?)");
                 $stmt->execute([$sezione, $nome, $descrizione, $quantita, $pattern_id, $foto_nome]);
@@ -56,19 +57,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    if (isset($_POST['azione']) && $_POST['azione'] === 'elimina') {
-        $id = (int)($_POST['id'] ?? 0);
-        $stmt = $pdo->prepare("DELETE FROM stoffe WHERE id = ?");
-        $stmt->execute([$id]);
-        $messaggio = "<div class='alert success'>✓ Elemento rimosso dal magazzino.</div>";
+    // 2. Modifica quantità veloce (+ / -)
+    if (isset($_POST['azione']) && $_POST['azione'] === 'aggiorna_quantita' && isset($pdo) && $pdo !== null) {
+        $nome_mat = trim($_POST['nome_mat'] ?? '');
+        $sezione_mat = trim($_POST['sezione_mat'] ?? '');
+        $delta = (int)($_POST['delta'] ?? 0);
+
+        if (!empty($nome_mat) && $delta !== 0) {
+            try {
+                // Recupera l'ID del record più recente per quel nome e sezione
+                $stmt_get = $pdo->prepare("SELECT id, quantita FROM stoffe WHERE LOWER(TRIM(nome)) = LOWER(TRIM(?)) AND sezione = ? ORDER BY id DESC LIMIT 1");
+                $stmt_get->execute([$nome_mat, $sezione_mat]);
+                $rec = $stmt_get->fetch(PDO::FETCH_ASSOC);
+
+                if ($rec) {
+                    $nuova_qta = $rec['quantita'] + $delta;
+                    if ($nuova_qta <= 0) {
+                        // Se la quantità scende a 0 o meno, aggiorna a 0
+                        $stmt_upd = $pdo->prepare("UPDATE stoffe SET quantita = 0 WHERE id = ?");
+                        $stmt_upd->execute([$rec['id']]);
+                    } else {
+                        $stmt_upd = $pdo->prepare("UPDATE stoffe SET quantita = ? WHERE id = ?");
+                        $stmt_upd->execute([$nuova_qta, $rec['id']]);
+                    }
+                }
+            } catch (PDOException $e) {
+                $messaggio = "<div class='alert error'>Errore aggiornamento quantità: " . $e->getMessage() . "</div>";
+            }
+        }
+    }
+
+    // 3. Elimina totale materiale
+    if (isset($_POST['azione']) && $_POST['azione'] === 'elimina' && isset($pdo) && $pdo !== null) {
+        $nome_elimina = trim($_POST['nome_elimina'] ?? '');
+        $sezione_elimina = trim($_POST['sezione_elimina'] ?? '');
+        
+        try {
+            $stmt = $pdo->prepare("DELETE FROM stoffe WHERE LOWER(TRIM(nome)) = LOWER(TRIM(?)) AND sezione = ?");
+            $stmt->execute([$nome_elimina, $sezione_elimina]);
+            $messaggio = "<div class='alert success'>✓ Materiale/Accessorio rimosso dal magazzino.</div>";
+        } catch (PDOException $e) {
+            $messaggio = "<div class='alert error'>Errore eliminazione: " . $e->getMessage() . "</div>";
+        }
     }
 }
 
 $stoffe = [];
-try {
-    $stoffe = $pdo->query("SELECT * FROM stoffe ORDER BY id DESC")->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    $messaggio = "<div class='alert error'>Errore lettura database: " . $e->getMessage() . "</div>";
+if (isset($pdo) && $pdo !== null) {
+    try {
+        $sql = "SELECT 
+                    MAX(id) as id,
+                    nome,
+                    sezione,
+                    SUM(quantita) as quantita,
+                    MAX(foto) as foto
+                FROM stoffe 
+                GROUP BY LOWER(TRIM(nome)), sezione 
+                ORDER BY id DESC";
+        $stoffe = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        $messaggio = "<div class='alert error'>Errore lettura database: " . $e->getMessage() . "</div>";
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -103,6 +152,48 @@ try {
         .badge-sacchetto { background: #e0f2f1; color: #00695c; }
         .badge-acc { background: #fff3e0; color: #e65100; }
         .badge-cerniera { background: #f3e5f5; color: #6a1b9a; }
+
+        /* Controlli Quantità Veloci (+/-) */
+        .qty-controls {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #f0f0f0;
+            padding: 4px 10px;
+            border-radius: 20px;
+            border: 1px solid #ddd;
+        }
+
+        .btn-qty {
+            background: white;
+            border: 1px solid #ccc;
+            color: #333;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+            line-height: 1;
+            padding: 0;
+        }
+
+        .btn-qty:hover {
+            background: #2c5e3b;
+            color: white;
+            border-color: #2c5e3b;
+        }
+
+        .qty-number {
+            font-weight: 800;
+            font-size: 0.95rem;
+            min-width: 35px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -176,7 +267,7 @@ try {
                         <th>Anteprima</th>
                         <th>Nome</th>
                         <th>Destinazione</th>
-                        <th>Quantità</th>
+                        <th>Quantità Totale</th>
                         <th>Azione</th>
                     </tr>
                 </thead>
@@ -199,11 +290,32 @@ try {
                                     else echo '<span class="badge badge-sacchetto">Sacchetto</span>';
                                 ?>
                             </td>
-                            <td><strong><?= $st['quantita'] ?> pz</strong></td>
                             <td>
-                                <form action="admin.php" method="POST" onsubmit="return confirm('Sicuro di voler eliminare?');">
+                                <div class="qty-controls">
+                                    <form action="admin.php" method="POST" style="margin:0;">
+                                        <input type="hidden" name="azione" value="aggiorna_quantita">
+                                        <input type="hidden" name="nome_mat" value="<?= htmlspecialchars($st['nome']) ?>">
+                                        <input type="hidden" name="sezione_mat" value="<?= htmlspecialchars($st['sezione']) ?>">
+                                        <input type="hidden" name="delta" value="-1">
+                                        <button type="submit" class="btn-qty" title="Riduci di 1 pz">-</button>
+                                    </form>
+
+                                    <span class="qty-number"><?= $st['quantita'] ?> pz</span>
+
+                                    <form action="admin.php" method="POST" style="margin:0;">
+                                        <input type="hidden" name="azione" value="aggiorna_quantita">
+                                        <input type="hidden" name="nome_mat" value="<?= htmlspecialchars($st['nome']) ?>">
+                                        <input type="hidden" name="sezione_mat" value="<?= htmlspecialchars($st['sezione']) ?>">
+                                        <input type="hidden" name="delta" value="1">
+                                        <button type="submit" class="btn-qty" title="Aumenta di 1 pz">+</button>
+                                    </form>
+                                </div>
+                            </td>
+                            <td>
+                                <form action="admin.php" method="POST" onsubmit="return confirm('Sicuro di voler eliminare tutti i pezzi di questo materiale?');">
                                     <input type="hidden" name="azione" value="elimina">
-                                    <input type="hidden" name="id" value="<?= $st['id'] ?>">
+                                    <input type="hidden" name="nome_elimina" value="<?= htmlspecialchars($st['nome']) ?>">
+                                    <input type="hidden" name="sezione_elimina" value="<?= htmlspecialchars($st['sezione']) ?>">
                                     <button type="submit" class="btn-delete">Elimina</button>
                                 </form>
                             </td>
