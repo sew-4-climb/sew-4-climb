@@ -2,535 +2,347 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+require_once __DIR__ . '/config/google_config.php';
+require_once __DIR__ . '/config/db.php';
+
+if (!isset($_SESSION['is_admin']) || $_SESSION['is_admin'] !== true) {
+    echo "<div style='font-family:sans-serif; text-align:center; padding:50px;'>";
+    echo "<h2>Accesso Negato</h2>";
+    echo "<p>Non hai i permessi per accedere al magazzino admin.</p>";
+    echo "<a href='login_google.php' style='background:#2c5e3b; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;'>Accedi con Google</a>";
+    echo "</div>";
+    exit;
+}
+
+$messaggio = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // 1. Aggiungi nuovo materiale
+    if (isset($_POST['azione']) && $_POST['azione'] === 'aggiungi') {
+        $nome = trim($_POST['nome'] ?? '');
+        $descrizione = trim($_POST['descrizione'] ?? '');
+        $sezione = $_POST['sezione'] ?? 'sacchetto';
+        $quantita = (int)($_POST['quantita'] ?? 1);
+        $pattern_id = 'pattern_' . time();
+
+        $foto_nome = null;
+        if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
+            $cartella_upload = __DIR__ . '/img/fabrics/';
+            if (!file_exists($cartella_upload)) {
+                mkdir($cartella_upload, 0777, true);
+            }
+            
+            $ext = strtolower(pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION));
+            if ($ext === 'heic') {
+                $messaggio = "<div class='alert error'>ATTENZIONE: Salva/esporta la foto in JPG o PNG per vederla nel browser!</div>";
+            } else {
+                $foto_nome = time() . '_' . uniqid() . '.' . $ext;
+                move_uploaded_file($_FILES['foto']['tmp_name'], $cartella_upload . $foto_nome);
+            }
+        }
+
+        if (!$messaggio && isset($pdo) && $pdo !== null) {
+            try {
+                $stmt = $pdo->prepare("INSERT INTO stoffe (sezione, nome, descrizione, quantita, pattern_id, foto) VALUES (?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$sezione, $nome, $descrizione, $quantita, $pattern_id, $foto_nome]);
+                $messaggio = "<div class='alert success'>✓ Elemento aggiunto con successo al magazzino!</div>";
+            } catch (PDOException $e) {
+                $messaggio = "<div class='alert error'>Errore inserimento: " . $e->getMessage() . "</div>";
+            }
+        }
+    }
+
+    // 2. Modifica quantità veloce (+ / -)
+    if (isset($_POST['azione']) && $_POST['azione'] === 'aggiorna_quantita' && isset($pdo) && $pdo !== null) {
+        $nome_mat = trim($_POST['nome_mat'] ?? '');
+        $sezione_mat = trim($_POST['sezione_mat'] ?? '');
+        $delta = (int)($_POST['delta'] ?? 0);
+
+        if (!empty($nome_mat) && $delta !== 0) {
+            try {
+                // Recupera l'ID del record più recente per quel nome e sezione
+                $stmt_get = $pdo->prepare("SELECT id, quantita FROM stoffe WHERE LOWER(TRIM(nome)) = LOWER(TRIM(?)) AND sezione = ? ORDER BY id DESC LIMIT 1");
+                $stmt_get->execute([$nome_mat, $sezione_mat]);
+                $rec = $stmt_get->fetch(PDO::FETCH_ASSOC);
+
+                if ($rec) {
+                    $nuova_qta = $rec['quantita'] + $delta;
+                    if ($nuova_qta <= 0) {
+                        // Se la quantità scende a 0 o meno, aggiorna a 0
+                        $stmt_upd = $pdo->prepare("UPDATE stoffe SET quantita = 0 WHERE id = ?");
+                        $stmt_upd->execute([$rec['id']]);
+                    } else {
+                        $stmt_upd = $pdo->prepare("UPDATE stoffe SET quantita = ? WHERE id = ?");
+                        $stmt_upd->execute([$nuova_qta, $rec['id']]);
+                    }
+                }
+            } catch (PDOException $e) {
+                $messaggio = "<div class='alert error'>Errore aggiornamento quantità: " . $e->getMessage() . "</div>";
+            }
+        }
+    }
+
+    // 3. Elimina totale materiale
+    if (isset($_POST['azione']) && $_POST['azione'] === 'elimina' && isset($pdo) && $pdo !== null) {
+        $nome_elimina = trim($_POST['nome_elimina'] ?? '');
+        $sezione_elimina = trim($_POST['sezione_elimina'] ?? '');
+        
+        try {
+            $stmt = $pdo->prepare("DELETE FROM stoffe WHERE LOWER(TRIM(nome)) = LOWER(TRIM(?)) AND sezione = ?");
+            $stmt->execute([$nome_elimina, $sezione_elimina]);
+            $messaggio = "<div class='alert success'>✓ Materiale/Accessorio rimosso dal magazzino.</div>";
+        } catch (PDOException $e) {
+            $messaggio = "<div class='alert error'>Errore eliminazione: " . $e->getMessage() . "</div>";
+        }
+    }
+}
+
+$stoffe = [];
+if (isset($pdo) && $pdo !== null) {
+    try {
+        $sql = "SELECT 
+                    MAX(id) as id,
+                    nome,
+                    sezione,
+                    SUM(quantita) as quantita,
+                    MAX(foto) as foto
+                FROM stoffe 
+                GROUP BY LOWER(TRIM(nome)), sezione 
+                ORDER BY id DESC";
+        $stoffe = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        $messaggio = "<div class='alert error'>Errore lettura database: " . $e->getMessage() . "</div>";
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="it">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sew 4 Climb — Chalk Bag Uniche e Sostenibili</title>
+    <title>Pannello Magazzino — Upcycled Lab</title>
     <style>
-        :root {
-            --primary: #2c5e3b;
-            --primary-dark: #1e4228;
-            --bg-cream: #f4f1ea;
-            --text-dark: #1a1a1a;
-            --text-muted: #555555;
-        }
-
         * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f4f1ea; margin: 0; padding: 20px; color: #333; }
+        .header-admin { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
+        .header-nav { display: flex; align-items: center; gap: 15px; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        .card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 25px; }
+        h1, h2, h3 { margin-top: 0; color: #1a1a1a; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .full-width { grid-column: span 2; }
+        label { font-size: 0.85rem; font-weight: bold; display: block; margin-bottom: 5px; color: #555; }
+        input, select, textarea { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 0.95rem; }
+        button.btn { background: #2c5e3b; color: white; border: none; padding: 14px 20px; font-size: 1rem; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; }
+        button.btn:hover { background: #21472c; }
+        .btn-logout { background: #d32f2f; text-decoration: none; color: white; padding: 10px 16px; border-radius: 6px; font-size: 0.85rem; font-weight: bold; display: inline-block; }
+        .btn-delete { background: #e53935; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85rem; }
+        
+        .table-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; min-width: 600px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; vertical-align: middle; }
+        th { background: #f8f9fa; font-size: 0.85rem; text-transform: uppercase; color: #666; }
+        .img-preview { width: 65px; height: 65px; object-fit: cover; border-radius: 6px; border: 1px solid #ddd; display: block; }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: var(--bg-cream);
-            color: var(--text-dark);
-            overflow-x: hidden;
-            line-height: 1.6;
-        }
+        .alert { padding: 12px; border-radius: 6px; margin-bottom: 20px; font-weight: bold; }
+        .alert.success { background: #e8f5e9; color: #2e7d32; }
+        .alert.error { background: #ffebee; color: #c62828; }
+        .badge { padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; white-space: nowrap; }
+        .badge-sacchetto { background: #e0f2f1; color: #00695c; }
+        .badge-acc { background: #fff3e0; color: #e65100; }
+        .badge-cerniera { background: #f3e5f5; color: #6a1b9a; }
 
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 18px 40px;
-            background: rgba(255, 255, 255, 0.92);
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(0,0,0,0.08);
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
-
-        .logo {
-            font-size: 1.4rem;
-            font-weight: 900;
-            letter-spacing: 2px;
-            color: var(--text-dark);
-            text-decoration: none;
-            white-space: nowrap;
-        }
-
-        .nav-links {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .nav-links a {
-            text-decoration: none;
-            color: var(--text-dark);
-            font-weight: 600;
-            font-size: 0.95rem;
-            white-space: nowrap;
-        }
-
-        .cart-icon {
-            position: relative;
-            display: flex;
-            align-items: center;
-            color: var(--text-dark);
-            text-decoration: none;
-            margin-right: 5px;
-        }
-
-        .cart-badge {
-            position: absolute;
-            top: -8px;
-            right: -10px;
-            background: #e53935;
-            color: white;
-            border-radius: 50%;
-            padding: 2px 6px;
-            font-size: 0.7rem;
-            font-weight: bold;
-        }
-
-        .btn-nav {
-            background-color: var(--primary);
-            color: white !important;
-            padding: 10px 22px;
-            border-radius: 30px;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(44, 94, 59, 0.25);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            white-space: nowrap;
-        }
-
-        .btn-nav:hover {
-            background-color: var(--primary-dark);
-            transform: translateY(-2px);
-        }
-
-        .alert-toast {
-            background: #2e7d32;
-            color: white;
-            text-align: center;
-            padding: 14px;
-            font-weight: bold;
-            font-size: 0.95rem;
-            position: relative;
-            z-index: 1001;
-        }
-
-        .hero-parallax {
-            position: relative;
-            height: 85vh;
-            background-image: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.55)), url('https://images.unsplash.com/photo-1522163182402-834f871fd851?auto=format&fit=crop&w=1600&q=80');
-            background-attachment: fixed;
-            background-position: center;
-            background-repeat: no-repeat;
-            background-size: cover;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            color: white;
-            padding: 0 20px;
-        }
-
-        .hero-content {
-            max-width: 850px;
-            animation: fadeIn 1.2s ease-in-out;
-            width: 100%;
-        }
-
-        .hero-content h1 {
-            font-size: 3.5rem;
-            font-weight: 900;
-            letter-spacing: -1px;
-            line-height: 1.15;
-            margin-bottom: 20px;
-            text-shadow: 0 4px 15px rgba(0,0,0,0.5);
-        }
-
-        .hero-content p {
-            font-size: 1.3rem;
-            margin-bottom: 35px;
-            opacity: 0.95;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-            font-weight: 300;
-        }
-
-        .scroll-section {
-            padding: 100px 20px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .split-block {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 60px;
-            align-items: center;
-            margin-bottom: 100px;
-        }
-
-        .split-block.reverse { direction: rtl; }
-        .split-block.reverse .block-text { direction: ltr; }
-
-        .block-text h2 {
-            font-size: 2.3rem;
-            font-weight: 800;
-            margin-bottom: 20px;
-            color: var(--text-dark);
-            line-height: 1.2;
-        }
-
-        .block-text p {
-            font-size: 1.1rem;
-            color: var(--text-muted);
-            margin-bottom: 20px;
-        }
-
-        .badge-tag {
-            display: inline-block;
-            background: #e2dacd;
-            color: #554838;
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 15px;
-        }
-
-        .img-frame {
-            position: relative;
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.12);
-            transition: transform 0.4s ease;
-        }
-
-        .img-frame:hover { transform: scale(1.02); }
-
-        .img-frame img {
-            width: 100%;
-            height: 480px;
-            object-fit: cover;
-            display: block;
-        }
-
-        .banner-parallax {
-            position: relative;
-            padding: 120px 20px;
-            background-image: linear-gradient(rgba(30, 66, 40, 0.75), rgba(44, 94, 59, 0.85)), url('img/ragazzo-lavoro.jpg');
-            background-attachment: fixed;
-            background-position: center;
-            background-repeat: no-repeat;
-            background-size: cover;
-            color: white;
-            text-align: center;
-            margin: 60px 0;
-        }
-
-        .banner-parallax-content {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-
-        .banner-parallax-content h2 {
-            font-size: 2.8rem;
-            font-weight: 800;
-            margin-bottom: 20px;
-        }
-
-        .banner-parallax-content p {
-            font-size: 1.2rem;
-            opacity: 0.95;
-            margin-bottom: 30px;
-        }
-
-        .grid-cards {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 30px;
-            margin-top: 40px;
-        }
-
-        .card-item {
-            background: white;
-            padding: 40px 30px;
-            border-radius: 16px;
-            border: 1px solid rgba(0,0,0,0.06);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.04);
-            transition: all 0.3s ease;
-        }
-
-        .card-item:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 15px 35px rgba(0,0,0,0.08);
-        }
-
-        .card-icon {
-            margin-bottom: 20px;
-            color: var(--primary);
-        }
-
-        .card-item h3 {
-            font-size: 1.3rem;
-            margin-bottom: 12px;
-        }
-
-        .card-item p {
-            color: var(--text-muted);
-            font-size: 0.95rem;
-            margin: 0;
-        }
-
-        .cta-section {
-            background: #111;
-            color: white;
-            text-align: center;
-            padding: 120px 20px;
-            position: relative;
-        }
-
-        .cta-container {
-            max-width: 850px;
-            margin: 0 auto;
-        }
-
-        .cta-container h2 {
-            font-size: 3.2rem;
-            font-weight: 900;
-            margin-bottom: 25px;
-            letter-spacing: -1px;
-        }
-
-        .cta-container p {
-            font-size: 1.2rem;
-            color: #aaa;
-            margin-bottom: 45px;
-        }
-
-        .btn-cta-giant {
+        /* Controlli Quantità Veloci (+/-) */
+        .qty-controls {
             display: inline-flex;
             align-items: center;
+            gap: 10px;
+            background: #f0f0f0;
+            padding: 6px 12px;
+            border-radius: 25px;
+            border: 1px solid #ddd;
+        }
+
+        .btn-qty {
+            background: white;
+            border: 1px solid #ccc;
+            color: #333;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
             justify-content: center;
-            gap: 12px;
-            background-color: var(--primary);
+            transition: all 0.15s ease;
+            line-height: 1;
+            padding: 0;
+            touch-action: manipulation;
+        }
+
+        .btn-qty:active, .btn-qty:hover {
+            background: #2c5e3b;
             color: white;
-            font-size: 1.25rem;
+            border-color: #2c5e3b;
+        }
+
+        .qty-number {
             font-weight: 800;
-            padding: 22px 50px;
-            border-radius: 50px;
-            text-decoration: none;
-            box-shadow: 0 12px 30px rgba(44, 94, 59, 0.4);
-            transition: all 0.3s ease;
-        }
-
-        .btn-cta-giant:hover {
-            background-color: #38784c;
-            transform: translateY(-4px) scale(1.02);
-            box-shadow: 0 18px 40px rgba(44, 94, 59, 0.5);
-        }
-
-        .footer {
-            background: #0a0a0a;
-            color: #666;
+            font-size: 1rem;
+            min-width: 40px;
             text-align: center;
-            padding: 30px 20px;
-            font-size: 0.85rem;
-            border-top: 1px solid #1f1f1f;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* --- FIX MOBILE DEFINITIVO PER NITIDEZZA SFONDO E CENTRAGGIO --- */
+        /* --- OTTIMIZZAZIONE RESPONSIVE PER MOBILE --- */
         @media (max-width: 768px) {
-            .header {
-                padding: 10px 12px;
-            }
-            .logo {
-                font-size: 1rem;
-                letter-spacing: 0px;
-            }
-            .nav-links {
-                gap: 8px;
-            }
-            .nav-links a {
-                font-size: 0.78rem;
-            }
-            .btn-nav {
-                padding: 6px 12px;
-                font-size: 0.75rem;
-            }
-            .btn-nav span {
-                display: none; /* Su smartphone lascia solo l'icona sul tasto verde dell'header */
-            }
-
-            /* Risolve la sfuocatura di Safari iOS disattivando la finta fixed e ripristinando cover nitido */
-            .hero-parallax, .banner-parallax {
-                background-attachment: scroll !important;
-                background-size: cover !important;
-                background-position: center center !important;
-            }
-
-            .hero-parallax {
-                height: 75vh;
-                padding: 0 15px;
-            }
-            .hero-content h1 {
-                font-size: 1.85rem;
-                margin-bottom: 15px;
-            }
-            .hero-content p {
-                font-size: 0.95rem;
-                margin-bottom: 25px;
-            }
-            .btn-cta-giant {
-                padding: 16px 24px;
-                font-size: 0.95rem;
-                width: 100%;
-            }
-
-            .split-block, .split-block.reverse { grid-template-columns: 1fr; direction: ltr; gap: 30px; }
-            .grid-cards { grid-template-columns: 1fr; }
-            .scroll-section { padding: 50px 15px; }
-            .cta-section { padding: 60px 15px; }
-            .cta-container h2 { font-size: 2rem; }
+            body { padding: 12px; }
+            .header-admin { padding: 15px; flex-direction: column; align-items: flex-start; }
+            .header-nav { width: 100%; justify-content: space-between; margin-top: 10px; }
+            .card { padding: 16px; }
+            .form-grid { grid-template-columns: 1fr; }
+            .full-width { grid-column: span 1; }
+            .btn-delete { padding: 10px 14px; width: 100%; text-align: center; }
         }
     </style>
 </head>
 <body>
 
-<?php if (isset($_GET['added'])): ?>
-    <div class="alert-toast">✓ Il tuo sacchetto custom è stato aggiunto al carrello! Clicca sull'icona in alto a destra per vederlo.</div>
-<?php endif; ?>
+<div class="container">
+    <div class="header-admin">
+        <div>
+            <h1 style="margin:0; font-size:1.3rem;">Gestione Magazzino Stoffe & Accessori</h1>
+            <small style="color:#666;">Autenticato come Admin: <strong><?= htmlspecialchars($_SESSION['user_email'] ?? '') ?></strong></small>
+        </div>
+        <div class="header-nav">
+            <a href="configuratore.php" style="color: #2c5e3b; font-weight: bold; text-decoration: none; font-size:0.9rem;">Configuratore &rarr;</a>
+            <a href="reset.php" class="btn-logout">Logout</a>
+        </div>
+    </div>
 
-<!-- NAVBAR -->
-<div class="header">
-    <a href="index.php" class="logo">SEW 4 CLIMB</a>
-    <div class="nav-links">
-        <?php if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true): ?>
-            <a href="admin.php" style="color:var(--primary); font-weight:bold;">Magazzino Admin</a>
-        <?php endif; ?>
+    <?= $messaggio ?>
 
-        <a href="cart.php" class="cart-icon" aria-label="Carrello">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-            <?php if (!empty($_SESSION['cart'])): ?>
-                <span class="cart-badge"><?= count($_SESSION['cart']) ?></span>
-            <?php endif; ?>
-        </a>
+    <div class="card">
+        <h3>+ Aggiungi Materiale / Accessorio al Magazzino</h3>
+        <form action="admin.php" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="azione" value="aggiungi">
+            
+            <div class="form-grid">
+                <div>
+                    <label>Nome Materiale / Accessorio:</label>
+                    <input type="text" name="nome" placeholder="es. Denim Vintage, Passante Spazzola Rosso, Etichetta Leather" required>
+                </div>
 
-        <?php if (isset($_SESSION['user_email'])): ?>
-            <a href="reset.php" style="color:#888;">Logout</a>
+                <div>
+                    <label>Sezione Destinazione Specifico:</label>
+                    <select name="sezione" required>
+                        <option value="sacchetto">1. Stoffa per Sacchetto (Pannelli Principali)</option>
+                        <option value="acc_pocket">2. Accessorio: Taschina Frontale</option>
+                        <option value="acc_brush">3. Accessorio: Porta Spazzolina (Strisciolina)</option>
+                        <option value="acc_tag">4. Accessorio: Etichetta in Pelle (Retro)</option>
+                        <option value="cerniera">5. Colore Cerniera Zip</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label>Quantità Disponibili:</label>
+                    <input type="number" name="quantita" min="1" value="1" required>
+                </div>
+
+                <div>
+                    <label>Foto / Campione (JPG / PNG):</label>
+                    <input type="file" name="foto" accept="image/jpeg,image/png,image/webp" required>
+                </div>
+
+                <div class="full-width">
+                    <label>Breve Descrizione:</label>
+                    <textarea name="descrizione" rows="2" placeholder="Note su materiale o colore..."></textarea>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <button type="submit" class="btn">Carica a Magazzino</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <h3>Inventario Attuale (<?= count($stoffe) ?>)</h3>
+        <?php if (count($stoffe) === 0): ?>
+            <p style="color:#888;">Nessun elemento in magazzino.</p>
         <?php else: ?>
-            <a href="login_google.php">Accedi</a>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Anteprima</th>
+                            <th>Nome</th>
+                            <th>Destinazione</th>
+                            <th>Quantità Totale</th>
+                            <th>Azione</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($stoffe as $st): ?>
+                            <tr>
+                                <td>
+                                    <?php if (!empty($st['foto']) && file_exists(__DIR__ . '/img/fabrics/' . $st['foto'])): ?>
+                                        <img src="img/fabrics/<?= htmlspecialchars($st['foto']) ?>" class="img-preview" alt="Stoffa">
+                                    <?php else: ?>
+                                        <span style="color:#aaa;">No Foto</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td><strong><?= htmlspecialchars($st['nome']) ?></strong></td>
+                                <td>
+                                    <?php 
+                                        $sec = $st['sezione'];
+                                        if ($sec === 'cerniera') echo '<span class="badge badge-cerniera">Cerniera Zip</span>';
+                                        elseif (strpos($sec, 'acc_') === 0) echo '<span class="badge badge-acc">Accessorio ('.str_replace('acc_', '', $sec).')</span>';
+                                        else echo '<span class="badge badge-sacchetto">Sacchetto</span>';
+                                    ?>
+                                </td>
+                                <td>
+                                    <div class="qty-controls">
+                                        <form action="admin.php" method="POST" style="margin:0;">
+                                            <input type="hidden" name="azione" value="aggiorna_quantita">
+                                            <input type="hidden" name="nome_mat" value="<?= htmlspecialchars($st['nome']) ?>">
+                                            <input type="hidden" name="sezione_mat" value="<?= htmlspecialchars($st['sezione']) ?>">
+                                            <input type="hidden" name="delta" value="-1">
+                                            <button type="submit" class="btn-qty" title="Riduci di 1 pz">-</button>
+                                        </form>
+
+                                        <span class="qty-number"><?= $st['quantita'] ?> pz</span>
+
+                                        <form action="admin.php" method="POST" style="margin:0;">
+                                            <input type="hidden" name="azione" value="aggiorna_quantita">
+                                            <input type="hidden" name="nome_mat" value="<?= htmlspecialchars($st['nome']) ?>">
+                                            <input type="hidden" name="sezione_mat" value="<?= htmlspecialchars($st['sezione']) ?>">
+                                            <input type="hidden" name="delta" value="1">
+                                            <button type="submit" class="btn-qty" title="Aumenta di 1 pz">+</button>
+                                        </form>
+                                    </div>
+                                </td>
+                                <td>
+                                    <form action="admin.php" method="POST" onsubmit="return confirm('Sicuro di voler eliminare tutti i pezzi di questo materiale?');">
+                                        <input type="hidden" name="azione" value="elimina">
+                                        <input type="hidden" name="nome_elimina" value="<?= htmlspecialchars($st['nome']) ?>">
+                                        <input type="hidden" name="sezione_elimina" value="<?= htmlspecialchars($st['sezione']) ?>">
+                                        <button type="submit" class="btn-delete">Elimina</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
         <?php endif; ?>
-        
-        <a href="configuratore.php" class="btn-nav">
-            <span>Crea il tuo Sacchetto</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-        </a>
     </div>
-</div>
-
-<!-- HERO -->
-<div class="hero-parallax">
-    <div class="hero-content">
-        <h1>Ogni tessuto ha una storia.<br>Tu crei il suo futuro.</h1>
-        <p>Chalk bag uniche da arrampicata nate dal recupero di denim vintage, eccedenze sartoriali e tessuti unici. Disegna il tuo pezzo irripetibile con Sew 4 Climb.</p>
-        <a href="configuratore.php" class="btn-cta-giant">
-            <span>Inizia la Configurazione Custom</span>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-        </a>
-    </div>
-</div>
-
-<div class="scroll-section">
-    <!-- BLOCCO 1 -->
-    <div class="split-block">
-        <div class="block-text">
-            <span class="badge-tag">Recupero Circolare</span>
-            <h2>Dagli Scarti di Negozio alle Pareti di Arrampicata.</h2>
-            <p>Non utilizziamo tessuti di nuova produzione. Recuperiamo rimanenze di magazzino, stoffe dimenticate nei retrobottega dei negozi e scarti di taglio che altrimenti andrebbero sprecati.</p>
-            <p>Ogni trama, cucitura e colore è selezionato a mano nel nostro laboratorio per dare vita a prodotti resistenti e sostenibili.</p>
-        </div>
-        <div class="img-frame">
-            <img src="https://images.unsplash.com/photo-1578932750294-f5075e85f44a?auto=format&fit=crop&w=1000&q=80" alt="Recupero Stoffe e Denim Vintage">
-        </div>
-    </div>
-
-    <!-- BLOCCO 2 -->
-    <div class="split-block reverse">
-        <div class="block-text">
-            <span class="badge-tag">Sartoria Artigianale</span>
-            <h2>Fatto a Mano Pezzo dopo Pezzo.</h2>
-            <p>I nostri sacchetti vengono assemblati e cuciti a mano nel laboratorio artigianale, unendo parti di vera stoffa vintage e jeans di recupero con massima cura dei dettagli.</p>
-            <p>Dalle cuciture rinforzate all'inserimento delle cerniere e delle etichette in pelle, ogni passaggio garantisce resistenza e stile inconfondibile.</p>
-        </div>
-        <div class="img-frame">
-            <img src="img/tavolo-cucito.jpg" alt="Lavorazione Artigianale Fatta a Mano e Sartoria">
-        </div>
-    </div>
-</div>
-
-<!-- BANNER INTERMEDIO -->
-<div class="banner-parallax">
-    <div class="banner-parallax-content">
-        <h2>Un Prodotto Artigianale, 100% Tuo.</h2>
-        <p>Scegli la parte superiore, il fondo, i lati etnici, il colore della cerniera zip e aggiungi gli accessori che desideri.</p>
-    </div>
-</div>
-
-<!-- CARDS DEI VALORI -->
-<div class="scroll-section">
-    <div style="text-align:center; max-width:700px; margin:0 auto 50px auto;">
-        <h2 style="font-size:2.5rem; font-weight:800; margin-bottom:15px;">Perché scegliere Sew 4 Climb</h2>
-        <p style="color:var(--text-muted); font-size:1.1rem;">L'unione perfetta tra passione per l'arrampicata e rispetto per l'ambiente.</p>
-    </div>
-
-    <div class="grid-cards">
-        <div class="card-item">
-            <div class="card-icon">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-            </div>
-            <h3>Zero Spreco</h3>
-            <p>Riduciamo l'impatto ambientale trasformando scarti tessili in attrezzatura da bouldering di altissima qualità.</p>
-        </div>
-
-        <div class="card-item">
-            <div class="card-icon">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            </div>
-            <h3>Fatto a Mano</h3>
-            <p>Ogni chalk bag è assemblata e cucita artigianalmente garantendo massimo rinforzo sulle cuciture sottoposte a sforzo.</p>
-        </div>
-
-        <div class="card-item">
-            <div class="card-icon">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-            </div>
-            <h3>Pezzo Unico</h3>
-            <p>Grazie alla combinazione delle varie stoffe del magazzino, nessun altro climber sulla parete avrà un sacchetto uguale al tuo.</p>
-        </div>
-    </div>
-</div>
-
-<!-- CALL TO ACTION FINALE -->
-<div class="cta-section">
-    <div class="cta-container">
-        <h2>Pronto a creare la tua Chalk Bag?</h2>
-        <p>Entra nel configuratore interattivo, seleziona i tessuti presenti nel magazzino e personalizza il tuo sacchetto passo dopo passo.</p>
-        <a href="configuratore.php" class="btn-cta-giant">
-            <span>Configura Ora il Tuo Sacchetto</span>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-        </a>
-    </div>
-</div>
-
-<div class="footer">
-    &copy; 2026 Sew 4 Climb — Sacchetti per arrampicata creati con materiali riciclati e denim di recupero.
 </div>
 
 </body>
