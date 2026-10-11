@@ -576,6 +576,73 @@ if (isset($pdo)) {
             opacity: 1;
             transform: translateY(0);
         }
+
+        /* --- OTTIMIZZAZIONE RESPONSIVE PER MOBILE --- */
+        @media (max-width: 768px) {
+            body {
+                height: auto;
+                min-height: 100vh;
+                overflow-x: hidden;
+                overflow-y: auto;
+            }
+
+            .header {
+                padding: 12px 16px;
+            }
+
+            .logo {
+                font-size: 1.1rem;
+            }
+
+            .main-container {
+                grid-template-columns: 1fr;
+                height: auto;
+                padding: 12px;
+                gap: 15px;
+            }
+
+            .preview-container {
+                height: 420px;
+                padding: 15px 10px;
+            }
+
+            .bag-stage {
+                width: 100%;
+                max-width: 320px;
+                height: 320px;
+            }
+
+            .view-controls {
+                top: 12px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 90%;
+                justify-content: center;
+                gap: 6px;
+            }
+
+            .btn-view {
+                padding: 8px 12px;
+                font-size: 0.75rem;
+            }
+
+            .nav-arrow.left { left: 8px; }
+            .nav-arrow.right { right: 8px; }
+            .nav-arrow.bottom { bottom: 12px; }
+
+            .panel {
+                padding: 20px 15px;
+            }
+
+            .grid-fabric {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+
+            .fabric-img {
+                height: 75px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -583,7 +650,7 @@ if (isset($pdo)) {
 <div class="header">
     <a href="index.php" class="logo">SEW 4 CLIMB</a>
     <div class="nav-right">
-        <?php if (isset($_SESSION['is_admin']) &&$_SESSION['is_admin'] === true): ?>
+        <?php if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true): ?>
             <a href="admin.php" style="color:var(--primary); font-weight:bold; font-size:0.9rem; text-decoration:none;">&larr; Magazzino Admin</a>
         <?php endif; ?>
         
@@ -626,7 +693,7 @@ if (isset($pdo)) {
         </button>
         
         <button type="button" class="nav-arrow right" onclick="toggleFrontBack()" title="Ruota Sacchetto" aria-label="Ruota Sacchetto">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
 
         <!-- FRECCIA IN BASSO (Guarda dal Basso con animazione X) -->

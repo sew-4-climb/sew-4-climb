@@ -49,6 +49,7 @@ if (session_status() === PHP_SESSION_NONE) {
             letter-spacing: 2px;
             color: var(--text-dark);
             text-decoration: none;
+            white-space: nowrap;
         }
 
         .nav-links {
@@ -62,6 +63,7 @@ if (session_status() === PHP_SESSION_NONE) {
             color: var(--text-dark);
             font-weight: 600;
             font-size: 0.95rem;
+            white-space: nowrap;
         }
 
         .cart-icon {
@@ -340,11 +342,28 @@ if (session_status() === PHP_SESSION_NONE) {
             to { opacity: 1; transform: translateY(0); }
         }
 
+        /* --- CORREZIONE SOVRAPPOSIZIONE MOBILE HEADER --- */
         @media (max-width: 900px) {
+            .header {
+                padding: 12px 15px;
+            }
+            .logo {
+                font-size: 1.05rem;
+                letter-spacing: 0.5px;
+            }
+            .nav-links {
+                gap: 10px;
+            }
+            .nav-links a {
+                font-size: 0.82rem;
+            }
+            .btn-nav {
+                padding: 8px 14px;
+                font-size: 0.8rem;
+            }
             .split-block, .split-block.reverse { grid-template-columns: 1fr; direction: ltr; }
             .grid-cards { grid-template-columns: 1fr; }
             .hero-content h1 { font-size: 2.4rem; }
-            .hero-parallax, .banner-parallax { background-attachment: scroll; }
         }
     </style>
 </head>

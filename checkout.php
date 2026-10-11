@@ -7,7 +7,7 @@ require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/config/mail_config.php'; // Includi il file mail
 
 if (!isset($_SESSION['user_email'])) {
-    header('Location: login_google.php');
+    header('Location: login_google.php?from=checkout');
     exit;
 }
 

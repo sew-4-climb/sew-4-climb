@@ -58,10 +58,13 @@ if (isset($data['access_token'])) {
     } else {
         $_SESSION['is_admin'] = false;
         
-        if (isset($_SESSION['carrello_configurazione'])) {
-            header('Location: checkout.php');
+        // Se è stata memorizzata una pagina di provenienza (index.php, configuratore.php, checkout.php, ecc.)
+        if (isset($_SESSION['redirect_after_login'])) {
+            $redirectTo = $_SESSION['redirect_after_login'];
+            unset($_SESSION['redirect_after_login']);
+            header('Location: ' . $redirectTo);
         } else {
-            header('Location: configuratore.php');
+            header('Location: index.php');
         }
     }
     exit;
