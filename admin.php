@@ -10,12 +10,9 @@ error_reporting(E_ALL);
 require_once __DIR__ . '/config/google_config.php';
 require_once __DIR__ . '/config/db.php';
 
+// Se l'utente non è admin, lo reindirizziamo subito alla Home Page anziché bloccare l'URL su admin.php
 if (!isset($_SESSION['is_admin']) || $_SESSION['is_admin'] !== true) {
-    echo "<div style='font-family:sans-serif; text-align:center; padding:50px;'>";
-    echo "<h2>Accesso Negato</h2>";
-    echo "<p>Non hai i permessi per accedere al magazzino admin.</p>";
-    echo "<a href='login_google.php' style='background:#2c5e3b; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;'>Accedi con Google</a>";
-    echo "</div>";
+    header('Location: index.php');
     exit;
 }
 
@@ -124,31 +121,35 @@ if (isset($pdo) && $pdo !== null) {
 <html lang="it">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pannello Magazzino — Upcycled Lab</title>
     <style>
+        * { box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f4f1ea; margin: 0; padding: 20px; color: #333; }
-        .header-admin { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 25px; }
+        .header-admin { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
+        .header-nav { display: flex; align-items: center; gap: 15px; }
         .container { max-width: 1100px; margin: 0 auto; }
         .card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 25px; }
         h1, h2, h3 { margin-top: 0; color: #1a1a1a; }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .full-width { grid-column: span 2; }
         label { font-size: 0.85rem; font-weight: bold; display: block; margin-bottom: 5px; color: #555; }
-        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 0.95rem; }
-        button.btn { background: #2c5e3b; color: white; border: none; padding: 12px 20px; font-size: 1rem; font-weight: bold; border-radius: 6px; cursor: pointer; }
+        input, select, textarea { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 0.95rem; }
+        button.btn { background: #2c5e3b; color: white; border: none; padding: 14px 20px; font-size: 1rem; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; }
         button.btn:hover { background: #21472c; }
-        .btn-logout { background: #d32f2f; text-decoration: none; color: white; padding: 8px 15px; border-radius: 5px; font-size: 0.85rem; font-weight: bold; }
-        .btn-delete { background: #e53935; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+        .btn-logout { background: #d32f2f; text-decoration: none; color: white; padding: 10px 16px; border-radius: 6px; font-size: 0.85rem; font-weight: bold; display: inline-block; }
+        .btn-delete { background: #e53935; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85rem; }
         
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .table-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; min-width: 600px; }
         th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; vertical-align: middle; }
         th { background: #f8f9fa; font-size: 0.85rem; text-transform: uppercase; color: #666; }
-        .img-preview { width: 70px; height: 70px; object-fit: cover; border-radius: 6px; border: 1px solid #ddd; }
+        .img-preview { width: 65px; height: 65px; object-fit: cover; border-radius: 6px; border: 1px solid #ddd; display: block; }
 
         .alert { padding: 12px; border-radius: 6px; margin-bottom: 20px; font-weight: bold; }
         .alert.success { background: #e8f5e9; color: #2e7d32; }
         .alert.error { background: #ffebee; color: #c62828; }
-        .badge { padding:4px 10px; border-radius:12px; font-size:0.8rem; font-weight:bold; }
+        .badge { padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; white-space: nowrap; }
         .badge-sacchetto { background: #e0f2f1; color: #00695c; }
         .badge-acc { background: #fff3e0; color: #e65100; }
         .badge-cerniera { background: #f3e5f5; color: #6a1b9a; }
@@ -157,10 +158,10 @@ if (isset($pdo) && $pdo !== null) {
         .qty-controls {
             display: inline-flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
             background: #f0f0f0;
-            padding: 4px 10px;
-            border-radius: 20px;
+            padding: 6px 12px;
+            border-radius: 25px;
             border: 1px solid #ddd;
         }
 
@@ -168,10 +169,10 @@ if (isset($pdo) && $pdo !== null) {
             background: white;
             border: 1px solid #ccc;
             color: #333;
-            width: 26px;
-            height: 26px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
-            font-size: 1rem;
+            font-size: 1.2rem;
             font-weight: bold;
             cursor: pointer;
             display: flex;
@@ -180,9 +181,10 @@ if (isset($pdo) && $pdo !== null) {
             transition: all 0.15s ease;
             line-height: 1;
             padding: 0;
+            touch-action: manipulation;
         }
 
-        .btn-qty:hover {
+        .btn-qty:active, .btn-qty:hover {
             background: #2c5e3b;
             color: white;
             border-color: #2c5e3b;
@@ -190,9 +192,20 @@ if (isset($pdo) && $pdo !== null) {
 
         .qty-number {
             font-weight: 800;
-            font-size: 0.95rem;
-            min-width: 35px;
+            font-size: 1rem;
+            min-width: 40px;
             text-align: center;
+        }
+
+        /* --- OTTIMIZZAZIONE RESPONSIVE PER MOBILE --- */
+        @media (max-width: 768px) {
+            body { padding: 12px; }
+            .header-admin { padding: 15px; flex-direction: column; align-items: flex-start; }
+            .header-nav { width: 100%; justify-content: space-between; margin-top: 10px; }
+            .card { padding: 16px; }
+            .form-grid { grid-template-columns: 1fr; }
+            .full-width { grid-column: span 1; }
+            .btn-delete { padding: 10px 14px; width: 100%; text-align: center; }
         }
     </style>
 </head>
@@ -201,11 +214,14 @@ if (isset($pdo) && $pdo !== null) {
 <div class="container">
     <div class="header-admin">
         <div>
-            <h1 style="margin:0; font-size:1.5rem;">Gestione Magazzino Stoffe & Accessori</h1>
+            <h1 style="margin:0; font-size:1.3rem;">
+                <a href="index.php" style="text-decoration:none; color:inherit;">SEW 4 CLIMB — Magazzino</a>
+            </h1>
             <small style="color:#666;">Autenticato come Admin: <strong><?= htmlspecialchars($_SESSION['user_email'] ?? '') ?></strong></small>
         </div>
-        <div>
-            <a href="configuratore.php" style="margin-right: 15px; color: #2c5e3b; font-weight: bold; text-decoration: none;">Accedi al Configuratore &rarr;</a>
+        <div class="header-nav">
+            <a href="index.php" style="color: #2c5e3b; font-weight: bold; text-decoration: none; font-size:0.9rem;">&larr; Home</a>
+            <a href="configuratore.php" style="color: #2c5e3b; font-weight: bold; text-decoration: none; font-size:0.9rem;">Configuratore &rarr;</a>
             <a href="reset.php" class="btn-logout">Logout</a>
         </div>
     </div>
@@ -261,68 +277,70 @@ if (isset($pdo) && $pdo !== null) {
         <?php if (count($stoffe) === 0): ?>
             <p style="color:#888;">Nessun elemento in magazzino.</p>
         <?php else: ?>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Anteprima</th>
-                        <th>Nome</th>
-                        <th>Destinazione</th>
-                        <th>Quantità Totale</th>
-                        <th>Azione</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($stoffe as $st): ?>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
                         <tr>
-                            <td>
-                                <?php if (!empty($st['foto']) && file_exists(__DIR__ . '/img/fabrics/' . $st['foto'])): ?>
-                                    <img src="img/fabrics/<?= htmlspecialchars($st['foto']) ?>" class="img-preview" alt="Stoffa">
-                                <?php else: ?>
-                                    <span style="color:#aaa;">No Foto</span>
-                                <?php endif; ?>
-                            </td>
-                            <td><strong><?= htmlspecialchars($st['nome']) ?></strong></td>
-                            <td>
-                                <?php 
-                                    $sec = $st['sezione'];
-                                    if ($sec === 'cerniera') echo '<span class="badge badge-cerniera">Cerniera Zip</span>';
-                                    elseif (strpos($sec, 'acc_') === 0) echo '<span class="badge badge-acc">Accessorio ('.str_replace('acc_', '', $sec).')</span>';
-                                    else echo '<span class="badge badge-sacchetto">Sacchetto</span>';
-                                ?>
-                            </td>
-                            <td>
-                                <div class="qty-controls">
-                                    <form action="admin.php" method="POST" style="margin:0;">
-                                        <input type="hidden" name="azione" value="aggiorna_quantita">
-                                        <input type="hidden" name="nome_mat" value="<?= htmlspecialchars($st['nome']) ?>">
-                                        <input type="hidden" name="sezione_mat" value="<?= htmlspecialchars($st['sezione']) ?>">
-                                        <input type="hidden" name="delta" value="-1">
-                                        <button type="submit" class="btn-qty" title="Riduci di 1 pz">-</button>
-                                    </form>
-
-                                    <span class="qty-number"><?= $st['quantita'] ?> pz</span>
-
-                                    <form action="admin.php" method="POST" style="margin:0;">
-                                        <input type="hidden" name="azione" value="aggiorna_quantita">
-                                        <input type="hidden" name="nome_mat" value="<?= htmlspecialchars($st['nome']) ?>">
-                                        <input type="hidden" name="sezione_mat" value="<?= htmlspecialchars($st['sezione']) ?>">
-                                        <input type="hidden" name="delta" value="1">
-                                        <button type="submit" class="btn-qty" title="Aumenta di 1 pz">+</button>
-                                    </form>
-                                </div>
-                            </td>
-                            <td>
-                                <form action="admin.php" method="POST" onsubmit="return confirm('Sicuro di voler eliminare tutti i pezzi di questo materiale?');">
-                                    <input type="hidden" name="azione" value="elimina">
-                                    <input type="hidden" name="nome_elimina" value="<?= htmlspecialchars($st['nome']) ?>">
-                                    <input type="hidden" name="sezione_elimina" value="<?= htmlspecialchars($st['sezione']) ?>">
-                                    <button type="submit" class="btn-delete">Elimina</button>
-                                </form>
-                            </td>
+                            <th>Anteprima</th>
+                            <th>Nome</th>
+                            <th>Destinazione</th>
+                            <th>Quantità Totale</th>
+                            <th>Azione</th>
                         </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($stoffe as $st): ?>
+                            <tr>
+                                <td>
+                                    <?php if (!empty($st['foto']) && file_exists(__DIR__ . '/img/fabrics/' . $st['foto'])): ?>
+                                        <img src="img/fabrics/<?= htmlspecialchars($st['foto']) ?>" class="img-preview" alt="Stoffa">
+                                    <?php else: ?>
+                                        <span style="color:#aaa;">No Foto</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td><strong><?= htmlspecialchars($st['nome']) ?></strong></td>
+                                <td>
+                                    <?php 
+                                        $sec = $st['sezione'];
+                                        if ($sec === 'cerniera') echo '<span class="badge badge-cerniera">Cerniera Zip</span>';
+                                        elseif (strpos($sec, 'acc_') === 0) echo '<span class="badge badge-acc">Accessorio ('.str_replace('acc_', '', $sec).')</span>';
+                                        else echo '<span class="badge badge-sacchetto">Sacchetto</span>';
+                                    ?>
+                                </td>
+                                <td>
+                                    <div class="qty-controls">
+                                        <form action="admin.php" method="POST" style="margin:0;">
+                                            <input type="hidden" name="azione" value="aggiorna_quantita">
+                                            <input type="hidden" name="nome_mat" value="<?= htmlspecialchars($st['nome']) ?>">
+                                            <input type="hidden" name="sezione_mat" value="<?= htmlspecialchars($st['sezione']) ?>">
+                                            <input type="hidden" name="delta" value="-1">
+                                            <button type="submit" class="btn-qty" title="Riduci di 1 pz">-</button>
+                                        </form>
+
+                                        <span class="qty-number"><?= $st['quantita'] ?> pz</span>
+
+                                        <form action="admin.php" method="POST" style="margin:0;">
+                                            <input type="hidden" name="azione" value="aggiorna_quantita">
+                                            <input type="hidden" name="nome_mat" value="<?= htmlspecialchars($st['nome']) ?>">
+                                            <input type="hidden" name="sezione_mat" value="<?= htmlspecialchars($st['sezione']) ?>">
+                                            <input type="hidden" name="delta" value="1">
+                                            <button type="submit" class="btn-qty" title="Aumenta di 1 pz">+</button>
+                                        </form>
+                                    </div>
+                                </td>
+                                <td>
+                                    <form action="admin.php" method="POST" onsubmit="return confirm('Sicuro di voler eliminare tutti i pezzi di questo materiale?');">
+                                        <input type="hidden" name="azione" value="elimina">
+                                        <input type="hidden" name="nome_elimina" value="<?= htmlspecialchars($st['nome']) ?>">
+                                        <input type="hidden" name="sezione_elimina" value="<?= htmlspecialchars($st['sezione']) ?>">
+                                        <button type="submit" class="btn-delete">Elimina</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
         <?php endif; ?>
     </div>
 </div>
