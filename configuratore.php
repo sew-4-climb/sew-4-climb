@@ -708,17 +708,17 @@ if (isset($pdo)) {
         <div class="bag-stage">
             <svg viewBox="0 0 400 500" id="svgBag">
                 <defs>
-                    <pattern id="pat_top_front" patternUnits="userSpaceOnUse" width="100" height="100"><rect width="100" height="100" fill="#78909c"/></pattern>
-                    <pattern id="pat_top_back" patternUnits="userSpaceOnUse" width="100" height="100"><rect width="100" height="100" fill="#78909c"/></pattern>
-                    <pattern id="pat_bottom_front" patternUnits="userSpaceOnUse" width="100" height="100"><rect width="100" height="100" fill="#263238"/></pattern>
-                    <pattern id="pat_bottom_back" patternUnits="userSpaceOnUse" width="100" height="100"><rect width="100" height="100" fill="#263238"/></pattern>
-                    <pattern id="pat_bottom_base" patternUnits="userSpaceOnUse" width="100" height="100"><rect width="100" height="100" fill="#1e272c"/></pattern>
-                    <pattern id="pat_side_left" patternUnits="userSpaceOnUse" width="100" height="100"><rect width="100" height="100" fill="#5d4037"/></pattern>
-                    <pattern id="pat_side_right" patternUnits="userSpaceOnUse" width="100" height="100"><rect width="100" height="100" fill="#5d4037"/></pattern>
-                    <pattern id="pat_pocket" patternUnits="userSpaceOnUse" width="100" height="100"><rect width="100" height="100" fill="#455a64"/></pattern>
-                    <pattern id="pat_brush" patternUnits="userSpaceOnUse" width="100" height="100"><rect width="100" height="100" fill="#78909c"/></pattern>
-                    <pattern id="pat_tag" patternUnits="userSpaceOnUse" width="100" height="100"><rect width="100" height="100" fill="#8d6e63"/></pattern>
-                    <pattern id="pat_zipper" patternUnits="userSpaceOnUse" width="100" height="100"><rect width="100" height="100" fill="#111111"/></pattern>
+                    <pattern id="pat_top_front" patternUnits="userSpaceOnUse" width="100%" height="100%"><rect width="100%" height="100%" fill="#78909c"/></pattern>
+                    <pattern id="pat_top_back" patternUnits="userSpaceOnUse" width="100%" height="100%"><rect width="100%" height="100%" fill="#78909c"/></pattern>
+                    <pattern id="pat_bottom_front" patternUnits="userSpaceOnUse" width="100%" height="100%"><rect width="100%" height="100%" fill="#263238"/></pattern>
+                    <pattern id="pat_bottom_back" patternUnits="userSpaceOnUse" width="100%" height="100%"><rect width="100%" height="100%" fill="#263238"/></pattern>
+                    <pattern id="pat_bottom_base" patternUnits="userSpaceOnUse" width="100%" height="100%"><rect width="100%" height="100%" fill="#1e272c"/></pattern>
+                    <pattern id="pat_side_left" patternUnits="userSpaceOnUse" width="100%" height="100%"><rect width="100%" height="100%" fill="#5d4037"/></pattern>
+                    <pattern id="pat_side_right" patternUnits="userSpaceOnUse" width="100%" height="100%"><rect width="100%" height="100%" fill="#5d4037"/></pattern>
+                    <pattern id="pat_pocket" patternUnits="userSpaceOnUse" width="100%" height="100%"><rect width="100%" height="100%" fill="#455a64"/></pattern>
+                    <pattern id="pat_brush" patternUnits="userSpaceOnUse" width="100%" height="100%"><rect width="100%" height="100%" fill="#78909c"/></pattern>
+                    <pattern id="pat_tag" patternUnits="userSpaceOnUse" width="100%" height="100%"><rect width="100%" height="100%" fill="#8d6e63"/></pattern>
+                    <pattern id="pat_zipper" patternUnits="userSpaceOnUse" width="100%" height="100%"><rect width="100%" height="100%" fill="#111111"/></pattern>
                 </defs>
 
                 <!-- VISTA FRONTE -->
@@ -995,6 +995,7 @@ function showToast(msg) {
     }, 3000);
 }
 
+/* APPLICAZIONE FOTO TESSUTO IN STRETCH COVER SENZA PICCOLI QUADRATINI REPETUTI */
 function applyFabricToSelected(item, element) {
     if (!item.foto) return;
 
@@ -1007,7 +1008,11 @@ function applyFabricToSelected(item, element) {
     const patternElem = document.getElementById(patternId);
 
     if (patternElem) {
-        patternElem.innerHTML = `<image href="img/fabrics/${item.foto}" width="100" height="100" preserveAspectRatio="xMidYMid slice"/>`;
+        // width="100%" height="100%" e preserveAspectRatio="none" consentono alla foto di distendersi/adattarsi al pannello
+        patternElem.setAttribute('patternUnits', 'userSpaceOnUse');
+        patternElem.setAttribute('width', '100%');
+        patternElem.setAttribute('height', '100%');
+        patternElem.innerHTML = `<image href="img/fabrics/${item.foto}" width="100%" height="100%" preserveAspectRatio="none"/>`;
     }
 
     renderFabricGrid();
