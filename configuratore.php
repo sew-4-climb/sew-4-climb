@@ -56,6 +56,10 @@ if (isset($pdo)) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configuratore Custom — Sew 4 Climb</title>
+    
+    <!-- Favicon 3 Montagne Colorate (Minimal) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='48' fill='%232c5e3b'/><path d='M18 72 L38 38 L58 72 Z' fill='%23c87d55'/><path d='M42 72 L62 42 L82 72 Z' fill='%23d4a359'/><path d='M28 72 L50 26 L72 72 Z' fill='%231e4228'/><path d='M50 26 L43 40 L50 37 L57 40 Z' fill='%23ffffff' opacity='0.9'/></svg>">
+
     <style>
         :root {
             --primary: #2c5e3b;
@@ -719,13 +723,13 @@ if (isset($pdo)) {
 
                 <!-- VISTA FRONTE -->
                 <g id="groupFront">
-                    <path class="interactive-part" d="M 45,70 L 80,75 L 65,420 L 30,410 Z" fill="url(#pat_side_left)" stroke="#333" stroke-width="1.5" onclick="selectPart('side_left', 'Fianco Sinistro Etnico', 'sacchetto')"/>
-                    <path class="interactive-part" d="M 320,75 L 355,70 L 370,410 L 335,420 Z" fill="url(#pat_side_right)" stroke="#333" stroke-width="1.5" onclick="selectPart('side_right', 'Fianco Destro Etnico', 'sacchetto')"/>
+                    <path class="interactive-part" d="M 45,70 L 80,75 L 65,420 L 30,410 Z" fill="url(#pat_side_left)" stroke="#333" stroke-width="1.5" onclick="selectPart('side_left', 'Fianco Sinistro Etnico', 'pannello_laterale')"/>
+                    <path class="interactive-part" d="M 320,75 L 355,70 L 370,410 L 335,420 Z" fill="url(#pat_side_right)" stroke="#333" stroke-width="1.5" onclick="selectPart('side_right', 'Fianco Destro Etnico', 'pannello_laterale')"/>
 
-                    <path class="interactive-part" d="M 80,75 L 320,75 L 335,250 L 65,250 Z" fill="url(#pat_top_front)" stroke="#333" stroke-width="1.5" onclick="selectPart('top_front', 'Parte Superiore Denim (Fronte)', 'sacchetto')"/>
+                    <path class="interactive-part" d="M 80,75 L 320,75 L 335,250 L 65,250 Z" fill="url(#pat_top_front)" stroke="#333" stroke-width="1.5" onclick="selectPart('top_front', 'Parte Superiore Denim (Fronte)', 'pannello_frontale')"/>
                     <line x1="200" y1="75" x2="200" y2="250" stroke="#37474f" stroke-width="2" stroke-dasharray="4,3"/>
 
-                    <path class="interactive-part" d="M 65,250 L 335,250 L 335,420 L 65,420 Z" fill="url(#pat_bottom_front)" stroke="#333" stroke-width="1.5" onclick="selectPart('bottom_front', 'Fondo Inferiore (Fronte)', 'sacchetto')"/>
+                    <path class="interactive-part" d="M 65,250 L 335,250 L 335,420 L 65,420 Z" fill="url(#pat_bottom_front)" stroke="#333" stroke-width="1.5" onclick="selectPart('bottom_front', 'Fondo Inferiore (Fronte)', 'pannello_frontale')"/>
 
                     <g id="element_pocket">
                         <path class="interactive-part" d="M 100,105 L 180,105 L 180,185 L 100,185 Z" fill="url(#pat_pocket)" stroke="#263238" stroke-width="2" onclick="selectPart('pocket', 'Accessorio: Taschina Frontale', 'acc_pocket')"/>
@@ -743,17 +747,17 @@ if (isset($pdo)) {
 
                 <!-- VISTA RETRO -->
                 <g id="groupBack" style="display: none;">
-                    <path class="interactive-part" d="M 45,70 L 80,75 L 65,420 L 30,410 Z" fill="url(#pat_side_left)" stroke="#333" stroke-width="1.5" onclick="selectPart('side_left', 'Fianco Sinistro Etnico', 'sacchetto')"/>
-                    <path class="interactive-part" d="M 320,75 L 355,70 L 370,410 L 335,420 Z" fill="url(#pat_side_right)" stroke="#333" stroke-width="1.5" onclick="selectPart('side_right', 'Fianco Destro Etnico', 'sacchetto')"/>
+                    <path class="interactive-part" d="M 45,70 L 80,75 L 65,420 L 30,410 Z" fill="url(#pat_side_left)" stroke="#333" stroke-width="1.5" onclick="selectPart('side_left', 'Fianco Sinistro Etnico', 'pannello_laterale')"/>
+                    <path class="interactive-part" d="M 320,75 L 355,70 L 370,410 L 335,420 Z" fill="url(#pat_side_right)" stroke="#333" stroke-width="1.5" onclick="selectPart('side_right', 'Fianco Destro Etnico', 'pannello_laterale')"/>
 
-                    <path class="interactive-part" d="M 80,75 L 320,75 L 335,250 L 65,250 Z" fill="url(#pat_top_back)" stroke="#333" stroke-width="1.5" onclick="selectPart('top_back', 'Parte Superiore Denim (Retro)', 'sacchetto')"/>
+                    <path class="interactive-part" d="M 80,75 L 320,75 L 335,250 L 65,250 Z" fill="url(#pat_top_back)" stroke="#333" stroke-width="1.5" onclick="selectPart('top_back', 'Parte Superiore Denim (Retro)', 'pannello_frontale')"/>
 
                     <g id="element_tag" class="interactive-part" onclick="selectPart('tag', 'Accessorio: Etichetta in Pelle', 'acc_tag')">
                         <rect x="140" y="95" width="120" height="75" rx="4" fill="url(#pat_tag)" stroke="#4e342e" stroke-width="2"/>
                         <text x="200" y="125" font-size="11" font-weight="bold" fill="#3e2723" text-anchor="middle">LEVI STRAUSS & CO.</text>
                     </g>
 
-                    <path class="interactive-part" d="M 65,250 L 335,250 L 335,420 L 65,420 Z" fill="url(#pat_bottom_back)" stroke="#333" stroke-width="1.5" onclick="selectPart('bottom_back', 'Fondo Inferiore (Retro)', 'sacchetto')"/>
+                    <path class="interactive-part" d="M 65,250 L 335,250 L 335,420 L 65,420 Z" fill="url(#pat_bottom_back)" stroke="#333" stroke-width="1.5" onclick="selectPart('bottom_back', 'Fondo Inferiore (Retro)', 'pannello_frontale')"/>
 
                     <g class="interactive-part" onclick="selectPart('zipper', 'Colore Cerniera Zip', 'cerniera')">
                         <rect x="100" y="280" width="200" height="14" rx="2" fill="url(#pat_zipper)"/>
@@ -768,7 +772,7 @@ if (isset($pdo)) {
                 <!-- VISTA DAL BASSO -->
                 <g id="groupBottom" style="display: none;">
                     <rect x="40" y="120" width="320" height="260" rx="60" fill="#1a1a1a" stroke="#333" stroke-width="3"/>
-                    <rect class="interactive-part" x="55" y="135" width="290" height="230" rx="45" fill="url(#pat_bottom_base)" stroke="#2c5e3b" stroke-width="3" onclick="selectPart('bottom_base', 'Base del Fondo (Vista dal Basso)', 'sacchetto')"/>
+                    <rect class="interactive-part" x="55" y="135" width="290" height="230" rx="45" fill="url(#pat_bottom_base)" stroke="#2c5e3b" stroke-width="3" onclick="selectPart('bottom_base', 'Base del Fondo (Vista dal Basso)', 'base')"/>
                     <rect x="65" y="145" width="270" height="210" rx="38" fill="none" stroke="#e0e0e0" stroke-width="2" stroke-dasharray="6,4"/>
                     <text x="200" y="255" font-size="14" font-weight="bold" fill="#ffffff" text-anchor="middle" style="letter-spacing:1px; opacity:0.85;">BASE DEL FONDO INDIPENDENTE</text>
                 </g>
@@ -831,7 +835,7 @@ if (isset($pdo)) {
 const allStoffe = <?= json_encode($stoffe); ?>;
 
 let currentSelectedPart = 'top_front';
-let currentCategory = 'sacchetto';
+let currentCategory = 'pannello_frontale';
 let currentView = 'front';
 let userSelections = {}; 
 let isAnimating = false;
@@ -880,7 +884,7 @@ function applyViewVisibility(view) {
     } else if (view === 'bottom') {
         document.getElementById('groupBottom').style.display = 'block';
         document.getElementById('btnBottom').classList.add('active');
-        selectPart('bottom_base', 'Base del Fondo (Vista dal Basso)', 'sacchetto');
+        selectPart('bottom_base', 'Base del Fondo (Vista dal Basso)', 'base');
     }
 }
 
@@ -925,8 +929,13 @@ function renderFabricGrid() {
 
     let filtered = [];
 
-    if (currentCategory === 'sacchetto') {
-        filtered = allStoffe.filter(s => s.sezione === 'sacchetto' || s.sezione === 'superiore' || s.sezione === 'fondo' || s.sezione === 'lati' || !s.sezione);
+    // Mappatura compatibile con le nuove e vecchie chiavi di sezione
+    if (currentCategory === 'pannello_frontale') {
+        filtered = allStoffe.filter(s => s.sezione === 'pannello_frontale' || s.sezione === 'sacchetto' || s.sezione === 'superiore' || !s.sezione);
+    } else if (currentCategory === 'pannello_laterale') {
+        filtered = allStoffe.filter(s => s.sezione === 'pannello_laterale' || s.sezione === 'lati');
+    } else if (currentCategory === 'base') {
+        filtered = allStoffe.filter(s => s.sezione === 'base' || s.sezione === 'fondo');
     } else {
         filtered = allStoffe.filter(s => s.sezione === currentCategory);
     }
