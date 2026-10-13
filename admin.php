@@ -116,6 +116,104 @@ if (isset($pdo) && $pdo !== null) {
         $messaggio = "<div class='alert error'>Errore lettura database: " . $e->getMessage() . "</div>";
     }
 }
+
+// Suddivisione per settori
+$gruppi = [
+    'principali' => [],
+    'cerniere'   => [],
+    'accessori'  => []
+];
+
+foreach ($stoffe as $st) {
+    $sec = $st['sezione'];
+    if (in_array($sec, ['pannello_frontale', 'pannello_laterale', 'base', 'sacchetto'])) {
+        $gruppi['principali'][] = $st;
+    } elseif ($sec === 'cerniera') {
+        $gruppi['cerniere'][] = $st;
+    } else {
+        $gruppi['accessori'][] = $st;
+    }
+}
+
+// Funzione helper per stampare le tabelle divise per settore
+function renderTabellaStoffe($lista) {
+    if (empty($lista)) {
+        echo "<p style='color:#888; margin: 15px 0;'>Nessun elemento presente in questo settore.</p>";
+        return;
+    }
+    ?>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Anteprima</th>
+                    <th>Nome</th>
+                    <th>Destinazione</th>
+                    <th>Quantità Totale</th>
+                    <th>Azione</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($lista as $st): ?>
+                    <tr>
+                        <td>
+                            <?php if (!empty($st['foto']) && file_exists(__DIR__ . '/img/fabrics/' . $st['foto'])): ?>
+                                <img src="img/fabrics/<?= htmlspecialchars($st['foto']) ?>" class="img-preview" alt="Stoffa">
+                            <?php else: ?>
+                                <span style="color:#aaa;">No Foto</span>
+                            <?php endif; ?>
+                        </td>
+                        <td><strong><?= htmlspecialchars($st['nome']) ?></strong></td>
+                        <td>
+                            <?php 
+                                $sec = $st['sezione'];
+                                if ($sec === 'cerniera') echo '<span class="badge badge-cerniera">Cerniera Zip</span>';
+                                elseif ($sec === 'pannello_frontale') echo '<span class="badge badge-sacchetto">Pannello Frontale</span>';
+                                elseif ($sec === 'pannello_laterale') echo '<span class="badge badge-sacchetto">Pannello Laterale</span>';
+                                elseif ($sec === 'base') echo '<span class="badge badge-sacchetto">Base / Fondo</span>';
+                                elseif ($sec === 'acc_pocket') echo '<span class="badge badge-acc">Taschina Frontale</span>';
+                                elseif ($sec === 'acc_brush') echo '<span class="badge badge-acc">Porta Spazzolina</span>';
+                                elseif ($sec === 'acc_tag') echo '<span class="badge badge-acc">Etichetta Pelle</span>';
+                                elseif (strpos($sec, 'acc_') === 0) echo '<span class="badge badge-acc">Accessorio ('.str_replace('acc_', '', $sec).')</span>';
+                                else echo '<span class="badge badge-sacchetto">'.htmlspecialchars($sec).'</span>';
+                            ?>
+                        </td>
+                        <td>
+                            <div class="qty-controls">
+                                <form action="admin.php" method="POST" style="margin:0;">
+                                    <input type="hidden" name="azione" value="aggiorna_quantita">
+                                    <input type="hidden" name="nome_mat" value="<?= htmlspecialchars($st['nome']) ?>">
+                                    <input type="hidden" name="sezione_mat" value="<?= htmlspecialchars($st['sezione']) ?>">
+                                    <input type="hidden" name="delta" value="-1">
+                                    <button type="submit" class="btn-qty" title="Riduci di 1 pz">-</button>
+                                </form>
+
+                                <span class="qty-number"><?= $st['quantita'] ?> pz</span>
+
+                                <form action="admin.php" method="POST" style="margin:0;">
+                                    <input type="hidden" name="azione" value="aggiorna_quantita">
+                                    <input type="hidden" name="nome_mat" value="<?= htmlspecialchars($st['nome']) ?>">
+                                    <input type="hidden" name="sezione_mat" value="<?= htmlspecialchars($st['sezione']) ?>">
+                                    <input type="hidden" name="delta" value="1">
+                                    <button type="submit" class="btn-qty" title="Aumenta di 1 pz">+</button>
+                                </form>
+                            </div>
+                        </td>
+                        <td>
+                            <form action="admin.php" method="POST" onsubmit="return confirm('Sicuro di voler eliminare tutti i pezzi di questo materiale?');">
+                                <input type="hidden" name="azione" value="elimina">
+                                <input type="hidden" name="nome_elimina" value="<?= htmlspecialchars($st['nome']) ?>">
+                                <input type="hidden" name="sezione_elimina" value="<?= htmlspecialchars($st['sezione']) ?>">
+                                <button type="submit" class="btn-delete">Elimina</button>
+                            </form>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+    <?php
+}
 ?>
 <!DOCTYPE html>
 <html lang="it">
@@ -141,7 +239,7 @@ if (isset($pdo) && $pdo !== null) {
         .btn-delete { background: #e53935; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85rem; }
         
         .table-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; min-width: 600px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 600px; }
         th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; vertical-align: middle; }
         th { background: #f8f9fa; font-size: 0.85rem; text-transform: uppercase; color: #666; }
         .img-preview { width: 65px; height: 65px; object-fit: cover; border-radius: 6px; border: 1px solid #ddd; display: block; }
@@ -153,6 +251,17 @@ if (isset($pdo) && $pdo !== null) {
         .badge-sacchetto { background: #e0f2f1; color: #00695c; }
         .badge-acc { background: #fff3e0; color: #e65100; }
         .badge-cerniera { background: #f3e5f5; color: #6a1b9a; }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid #2c5e3b;
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+            margin-top: 10px;
+        }
+        .section-header h3 { margin: 0; color: #2c5e3b; font-size: 1.2rem; }
 
         /* Controlli Quantità Veloci (+/-) */
         .qty-controls {
@@ -242,11 +351,13 @@ if (isset($pdo) && $pdo !== null) {
                 <div>
                     <label>Sezione Destinazione Specifico:</label>
                     <select name="sezione" required>
-                        <option value="sacchetto">1. Stoffa per Sacchetto (Pannelli Principali)</option>
-                        <option value="acc_pocket">2. Accessorio: Taschina Frontale</option>
-                        <option value="acc_brush">3. Accessorio: Porta Spazzolina (Strisciolina)</option>
-                        <option value="acc_tag">4. Accessorio: Etichetta in Pelle (Retro)</option>
-                        <option value="cerniera">5. Colore Cerniera Zip</option>
+                        <option value="pannello_frontale">1. Stoffa: Pannelli Frontali (Fronte/Retro)</option>
+                        <option value="pannello_laterale">2. Stoffa: Pannelli Laterali (Lati Etnici)</option>
+                        <option value="base">3. Stoffa: Base / Fondo Sacchetto</option>
+                        <option value="acc_pocket">4. Accessorio: Taschina Frontale</option>
+                        <option value="acc_brush">5. Accessorio: Porta Spazzolina (Strisciolina)</option>
+                        <option value="acc_tag">6. Accessorio: Etichetta in Pelle (Retro)</option>
+                        <option value="cerniera">7. Colore Cerniera Zip</option>
                     </select>
                 </div>
 
@@ -272,76 +383,27 @@ if (isset($pdo) && $pdo !== null) {
         </form>
     </div>
 
+    <!-- INVENTARIO DIVISO PER SETTORI -->
     <div class="card">
-        <h3>Inventario Attuale (<?= count($stoffe) ?>)</h3>
-        <?php if (count($stoffe) === 0): ?>
-            <p style="color:#888;">Nessun elemento in magazzino.</p>
-        <?php else: ?>
-            <div class="table-wrapper">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Anteprima</th>
-                            <th>Nome</th>
-                            <th>Destinazione</th>
-                            <th>Quantità Totale</th>
-                            <th>Azione</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($stoffe as $st): ?>
-                            <tr>
-                                <td>
-                                    <?php if (!empty($st['foto']) && file_exists(__DIR__ . '/img/fabrics/' . $st['foto'])): ?>
-                                        <img src="img/fabrics/<?= htmlspecialchars($st['foto']) ?>" class="img-preview" alt="Stoffa">
-                                    <?php else: ?>
-                                        <span style="color:#aaa;">No Foto</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td><strong><?= htmlspecialchars($st['nome']) ?></strong></td>
-                                <td>
-                                    <?php 
-                                        $sec = $st['sezione'];
-                                        if ($sec === 'cerniera') echo '<span class="badge badge-cerniera">Cerniera Zip</span>';
-                                        elseif (strpos($sec, 'acc_') === 0) echo '<span class="badge badge-acc">Accessorio ('.str_replace('acc_', '', $sec).')</span>';
-                                        else echo '<span class="badge badge-sacchetto">Sacchetto</span>';
-                                    ?>
-                                </td>
-                                <td>
-                                    <div class="qty-controls">
-                                        <form action="admin.php" method="POST" style="margin:0;">
-                                            <input type="hidden" name="azione" value="aggiorna_quantita">
-                                            <input type="hidden" name="nome_mat" value="<?= htmlspecialchars($st['nome']) ?>">
-                                            <input type="hidden" name="sezione_mat" value="<?= htmlspecialchars($st['sezione']) ?>">
-                                            <input type="hidden" name="delta" value="-1">
-                                            <button type="submit" class="btn-qty" title="Riduci di 1 pz">-</button>
-                                        </form>
+        <h2>Inventario Attuale per Settore (<?= count($stoffe) ?> elementi)</h2>
+        
+        <!-- SETTORE PANNELLI PRINCIPALI E BASI -->
+        <div class="section-header">
+            <h3>🧵 Settore Pannelli Principali & Basi (<?= count($gruppi['principali']) ?>)</h3>
+        </div>
+        <?php renderTabellaStoffe($gruppi['principali']); ?>
 
-                                        <span class="qty-number"><?= $st['quantita'] ?> pz</span>
+        <!-- SETTORE CERNIERE -->
+        <div class="section-header" style="margin-top: 35px;">
+            <h3>🤐 Settore Cerniere Zip (<?= count($gruppi['cerniere']) ?>)</h3>
+        </div>
+        <?php renderTabellaStoffe($gruppi['cerniere']); ?>
 
-                                        <form action="admin.php" method="POST" style="margin:0;">
-                                            <input type="hidden" name="azione" value="aggiorna_quantita">
-                                            <input type="hidden" name="nome_mat" value="<?= htmlspecialchars($st['nome']) ?>">
-                                            <input type="hidden" name="sezione_mat" value="<?= htmlspecialchars($st['sezione']) ?>">
-                                            <input type="hidden" name="delta" value="1">
-                                            <button type="submit" class="btn-qty" title="Aumenta di 1 pz">+</button>
-                                        </form>
-                                    </div>
-                                </td>
-                                <td>
-                                    <form action="admin.php" method="POST" onsubmit="return confirm('Sicuro di voler eliminare tutti i pezzi di questo materiale?');">
-                                        <input type="hidden" name="azione" value="elimina">
-                                        <input type="hidden" name="nome_elimina" value="<?= htmlspecialchars($st['nome']) ?>">
-                                        <input type="hidden" name="sezione_elimina" value="<?= htmlspecialchars($st['sezione']) ?>">
-                                        <button type="submit" class="btn-delete">Elimina</button>
-                                    </form>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-        <?php endif; ?>
+        <!-- SETTORE ACCESSORI -->
+        <div class="section-header" style="margin-top: 35px;">
+            <h3>✂️ Settore Accessori (<?= count($gruppi['accessori']) ?>)</h3>
+        </div>
+        <?php renderTabellaStoffe($gruppi['accessori']); ?>
     </div>
 </div>
 

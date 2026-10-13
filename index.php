@@ -9,6 +9,10 @@ if (session_status() === PHP_SESSION_NONE) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sew 4 Climb — Chalk Bag Uniche e Sostenibili</title>
+    
+    <!-- Favicon 3 Montagne Colorate (Minimal) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='48' fill='%232c5e3b'/><path d='M18 72 L38 38 L58 72 Z' fill='%23c87d55'/><path d='M42 72 L62 42 L82 72 Z' fill='%23d4a359'/><path d='M28 72 L50 26 L72 72 Z' fill='%231e4228'/><path d='M50 26 L43 40 L50 37 L57 40 Z' fill='%23ffffff' opacity='0.9'/></svg>">
+
     <style>
         :root {
             --primary: #2c5e3b;
